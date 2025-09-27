@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<div class="card center">
+    <h1>ProjectPlanning</h1>
+    <p>Creá un nuevo proyecto para iniciar el proceso.</p>
+    <a class="btn btn-primary" href="{% url 'projects:project_create' %}">➕ Nuevo proyecto</a>
+</div>
+{% endblock %}

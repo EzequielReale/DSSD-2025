@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}ProjectPlanning{% endblock %}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        :root { --mx: 920px; --brand: #2d6cdf; }
+        *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f7fb;color:#222}
+        header{background:#111;color:#fff} nav{max-width:var(--mx);margin:0 auto;padding:.75rem 1rem;display:flex;gap:1rem}
+        nav a{color:#fff;text-decoration:none}
+        main{max-width:var(--mx);margin:1.25rem auto;padding:0 1rem}
+        .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:1rem 1.25rem}
+        .grid{display:grid;gap:.75rem}.grid-2{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr 1fr}
+        @media (max-width: 800px){.grid-2,.grid-3{grid-template-columns:1fr}}
+        label{display:block;margin-bottom:.25rem;font-weight:600}
+        input,select,textarea{width:100%;padding:.55rem .65rem;border:1px solid #d7d7d7;border-radius:8px;background:#fff}
+        textarea{min-height:72px}
+        .btn{display:inline-block;padding:.6rem 1rem;border-radius:10px;border:1px solid #ccc;background:#eee;cursor:pointer;text-decoration:none}
+        .btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+        .btn-secondary{background:#f2f2f2}
+        .actions{margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap}
+        .alert-err{background:#fee;border:1px solid #f99;padding:.75rem;border-radius:10px;margin-bottom:1rem}
+        .field-errors{color:#b00020;font-size:.9rem;margin-top:.25rem}
+        .center{text-align:center}
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<header>
+    <nav>
+        <a href="/">Inicio</a>
+        <a href="{% url 'projects:project_create' %}">Nuevo proyecto</a>
+    </nav>
+</header>
+<main>
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

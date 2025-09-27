@@ -1,0 +1,21 @@
+{% extends "projects/base.html" %}
+{% block title %}Proyecto guardado{% endblock %}
+{% block content %}
+{% if bonita_error %}
+<div class="alert alert-warning">
+    {{ bonita_error }}
+</div>
+{% endif %}
+
+<h2>Proyecto creado</h2>
+<ul>
+    <li><strong>Nombre:</strong> {{ project.name }}</li>
+    <li><strong>Descripción:</strong> {{ project.description }}</li>
+    <li><strong>Inicio:</strong> {{ project.start_date }}</li>
+    <li><strong>Fin:</strong> {{ project.end_date }}</li>
+    <li><strong>Necesidades:</strong>
+        <pre>{{ project.necesidades|safe }}</pre>
+    </li>
+</ul>
+
+{% endblock %}

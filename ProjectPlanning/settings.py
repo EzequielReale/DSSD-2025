@@ -11,10 +11,19 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os, dotenv
+
+dotenv.load_dotenv()
+
+BONITA_URL = os.getenv('BONITA_URL', 'http://localhost:8080/bonita')
+BONITA_USER = os.getenv('BONITA_USER', '')
+BONITA_PASS = os.getenv('BONITA_PASS', '')
+BONITA_PROCESS_ID = os.getenv('BONITA_PROCESS_ID', '')
+BONITA_PROCESS_NAME = os.getenv('BONITA_PROCESS_NAME', '')
+BONITA_PROCESS_VERSION = os.getenv('BONITA_PROCESS_VERSION', '')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -37,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'projects'
 ]
 
 MIDDLEWARE = [
@@ -51,16 +61,17 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'ProjectPlanning.urls'
 
+
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],   # 👈 usa la carpeta global templates/
+        "APP_DIRS": True,                   # 👈 también busca en las apps
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
