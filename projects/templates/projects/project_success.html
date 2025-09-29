@@ -7,15 +7,17 @@
 </div>
 {% endif %}
 
-<h2>Proyecto creado</h2>
-<ul>
-    <li><strong>Nombre:</strong> {{ project.name }}</li>
-    <li><strong>Descripción:</strong> {{ project.description }}</li>
-    <li><strong>Inicio:</strong> {{ project.start_date }}</li>
-    <li><strong>Fin:</strong> {{ project.end_date }}</li>
-    <li><strong>Necesidades:</strong>
-        <pre>{{ project.necesidades|safe }}</pre>
-    </li>
-</ul>
+<div class="card">
+    <h2 class="center">Proyecto creado</h2>
+    <ul>
+        <li><strong>Nombre:</strong> {{ project.name }}</li>
+        <li><strong>Descripción:</strong> {{ project.description }}</li>
+        <li><strong>Inicio:</strong> {{ project.start_date }}</li>
+        <li><strong>Fin:</strong> {{ project.end_date }}</li>
+        <li><strong>Necesidades:</strong>
+            <pre>{{ project.necesidades|safe }}</pre>
+        </li>
+    </ul>
+</div>
 
 {% endblock %}
