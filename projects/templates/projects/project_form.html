@@ -1,14 +1,56 @@
-{% extends "projects/base.html" %}
+{% extends "base.html" %}
 {% block title %}Alta de proyecto{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Encapsulado al template */
+    .section-title { margin: .25rem 0 0 0; }
+    .need-list { display: grid; gap: .75rem; }
+    .need-card { border: 1px solid var(--line); border-radius: 12px; padding: 1rem; background: #fff; }
+    .need-index { color: #6b7280; font-size: .9rem; }
+    .need-fields { display: grid; gap: .85rem; grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 820px) { .need-fields { grid-template-columns: 1fr; } }
+    .need-foot { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .6rem; }
+    .hint { color: #6b7280; font-size: .9rem; }
+    .inline-check{
+         display:inline-flex;
+         align-items:center;
+         gap:.5rem;
+         margin:.25rem 0;
+    }
+    .inline-check input[type="checkbox"]{
+        width:18px; height:18px; margin:0; flex:0 0 18px;
+    }
+    .inline-check .label{
+        color:#374151;
+        white-space:nowrap;
+    }
+    @media (max-width: 520px){
+        .inline-check{align-items:flex-start}
+        .inline-check .label{white-space:normal; line-height:1.35}
+    }
+    .is-invalid{
+        border-color:#ef4444 !important;
+        outline:2px solid rgba(239,68,68,.2);
+        outline-offset: 1px;
+    }
+    #form-errors{
+        display:none;
+        margin-bottom:1rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
-    <h1>Alta de proyecto</h1>
+    <h1 class="page-title">Alta de proyecto</h1>
 
     {% if error_msg %}
-    <div class="alert-err">{{ error_msg }}</div>
+    <div class="alert alert-err">{{ error_msg }}</div>
     {% endif %}
+    <div id="form-errors" class="alert alert-err"></div>
 
-    <form method="post" novalidate>
+    <form method="post" novalidate id="project-form">
         {% csrf_token %}
 
         <div class="grid grid-2">
@@ -38,45 +80,93 @@
         </div>
 
         <hr>
-        <h2>Necesidades</h2>
+        <h3 class="section-title">Necesidades</h3>
 
         {{ formset.non_form_errors }}
+        {{ formset.management_form }}
 
-        {{ formset.management_form.TOTAL_FORMS }}
-        {{ formset.management_form.INITIAL_FORMS }}
-        {{ formset.management_form.MIN_NUM_FORMS }}
-        {{ formset.management_form.MAX_NUM_FORMS }}
-
-        <div id="needs-forms">
+        <div id="need-list" class="need-list">
             {% for f in formset.forms %}
-            <div class="card" style="margin:.5rem 0;">
-                <div class="grid grid-3">
+            {# Siempre: management y otros hidden del form #}
+            {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+
+            {% if f.DELETE.value %}
+            {# Mantener la eliminación entre POSTs: incluimos DELETE checkeado pero sin mostrar la tarjeta #}
+            <div style="display:none">
+                {{ f.DELETE }}
+            </div>
+            {% else %}
+            <div class="need-card" data-active="1">
+                <div class="need-fields">
                     <div>
-                        <label>Tipo</label>
+                        <label for="{{ f.need_type.id_for_label }}">Tipo</label>
                         {{ f.need_type }}
                         {% if f.need_type.errors %}<div class="field-errors">{{ f.need_type.errors }}</div>{% endif %}
                     </div>
                     <div>
-                        <label>Detalle</label>
+                        <label for="{{ f.need_description.id_for_label }}">Detalle</label>
                         {{ f.need_description }}
                         {% if f.need_description.errors %}<div class="field-errors">{{ f.need_description.errors }}</div>{% endif %}
                     </div>
                     <div>
-                        <label>Cantidad / Monto</label>
+                        <label for="{{ f.quantity.id_for_label }}">Cantidad / Monto</label>
                         {{ f.quantity }}
                         {% if f.quantity.errors %}<div class="field-errors">{{ f.quantity.errors }}</div>{% endif %}
                     </div>
                 </div>
-                <label style="display:inline-flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-                    {{ f.DELETE }} Quitar esta necesidad
-                </label>
+
+                <div class="inline-check">
+                    {{ f.needs_help }}
+                    <span class="label">Requiere ayuda de la red</span>
+                </div>
+
+                <div class="need-foot">
+                    {# DELETE oculto para poder marcarla desde el botón "Quitar" #}
+                    <label style="display:none">{{ f.DELETE }}</label>
+                    <button type="button" class="btn btn-remove">Quitar</button>
+                </div>
             </div>
+            {% endif %}
+            {% empty %}
+            <div id="need-empty" class="hint">Todavía no agregaste necesidades.</div>
             {% endfor %}
         </div>
 
         <div class="actions">
-            <button class="btn" type="submit" name="add_need" value="1">+ Agregar necesidad</button>
+            <button class="btn btn-ghost" type="button" id="need-add">+ Agregar necesidad</button>
         </div>
+
+        <!-- Template (empty_form) -->
+        <template id="need-template">
+            <div class="need-card" data-active="1">
+                {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+                <div class="need-fields">
+                    <div>
+                        <label for="{{ formset.empty_form.need_type.id_for_label }}">Tipo</label>
+                        {{ formset.empty_form.need_type }}
+                    </div>
+                    <div>
+                        <label for="{{ formset.empty_form.need_description.id_for_label }}">Detalle</label>
+                        {{ formset.empty_form.need_description }}
+                    </div>
+                    <div>
+                        <label for="{{ formset.empty_form.quantity.id_for_label }}">Cantidad / Monto</label>
+                        {{ formset.empty_form.quantity }}
+                    </div>
+                </div>
+
+                <div class="inline-check">
+                    {{ formset.empty_form.needs_help }}
+                    <span class="label">Requiere ayuda de la red</span>
+                </div>
+
+                <div class="need-foot">
+                    <label style="display:none">{{ formset.empty_form.DELETE }}</label>
+                    <button type="button" class="btn btn-remove">Quitar</button>
+                </div>
+            </div>
+        </template>
 
         <div class="actions">
             <button class="btn btn-primary" type="submit">Guardar</button>
@@ -84,4 +174,205 @@
         </div>
     </form>
 </div>
+
+<script>
+    (()=> {
+        const form  = document.getElementById('project-form');
+        const list  = document.getElementById('need-list');
+        const add   = document.getElementById('need-add');
+        const total = document.getElementById('id_needs-TOTAL_FORMS') ||
+            document.querySelector('input[name="needs-TOTAL_FORMS"]');
+        const tpl   = document.getElementById('need-template');
+        const empty = document.getElementById('need-empty');
+        const topErr = document.getElementById('form-errors');
+
+        const visibleCards = () =>
+            Array.from(list.querySelectorAll('.need-card'))
+                .filter(c => c.dataset.active === '1' && c.style.display !== 'none');
+
+        const refreshRemoveState = () => {
+            const cards = visibleCards();
+            cards.forEach(card => {
+                const btn = card.querySelector('.btn-remove');
+                if (btn) btn.disabled = (cards.length <= 1);
+            });
+        };
+
+        // -- ERRORES --
+        const clearClientErrors = () => {
+            form.querySelectorAll('.field-errors[data-auto="1"]').forEach(n => n.remove());
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            if (topErr){ topErr.style.display='none'; topErr.innerHTML=''; }
+        };
+
+        const addFieldError = (input, message) => {
+            if (!input) return;
+            input.classList.add('is-invalid');
+            const msg = document.createElement('div');
+            msg.className = 'field-errors';
+            msg.dataset.auto = '1';
+            msg.textContent = message;
+            // insertar después del input/select/textarea
+            const after = input.nextElementSibling && input.nextElementSibling.classList.contains('field-errors')
+                ? input.nextElementSibling : null;
+            if (after && after.dataset.auto !== '1') {
+                // si ya hay errores del servidor, agregamos el nuestro después de ellos
+                after.insertAdjacentElement('afterend', msg);
+            } else {
+                input.insertAdjacentElement('afterend', msg);
+            }
+        };
+
+        const showTopErrors = (messages) => {
+            if (!topErr) return;
+            topErr.innerHTML = messages.length === 1
+                ? messages[0]
+                : `<strong>Se encontraron ${messages.length} errores:</strong><ul style="margin:.5rem 0 0 1rem;">${messages.map(m=>`<li>${m}</li>`).join('')}</ul>`;
+            topErr.style.display = 'block';
+        };
+
+        // -- MANEJO NECESIDADES --
+        const addNeed = () => {
+            const idx = parseInt(total.value || '0', 10);
+            const frag = tpl.content.cloneNode(true);
+
+            frag.querySelectorAll('input, select, textarea, label').forEach(el => {
+                if (el.name && el.name.includes('__prefix__')) el.name = el.name.replaceAll('__prefix__', String(idx));
+                if (el.id && el.id.includes('__prefix__')) el.id = el.id.replaceAll('__prefix__', String(idx));
+                const f = el.getAttribute && el.getAttribute('for');
+                if (f && f.includes('__prefix__')) el.setAttribute('for', f.replaceAll('__prefix__', String(idx)));
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
+                if (el.tagName === 'SELECT') el.selectedIndex = 0;
+            });
+
+            // wire quitar
+            const rm = frag.querySelector('.btn-remove');
+            if (rm) rm.addEventListener('click', () => removeNeed(rm));
+
+            if (empty) empty.remove();
+            list.appendChild(frag);
+            total.value = idx + 1;
+            refreshRemoveState();
+        };
+
+        const removeNeed = (btn) => {
+            const card = btn.closest('.need-card');
+            if (!card) return;
+            if (visibleCards().length <= 1) return; // proteger última
+            const del = card.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (del) del.checked = true;
+            card.dataset.active = '0';
+            card.style.display = 'none';
+            refreshRemoveState();
+        };
+
+        // --- Validación cliente ---
+        const validateForm = () => {
+            clearClientErrors();
+            const messages = [];
+            let firstInvalid = null;
+
+            // Proyecto
+            const name = form.querySelector('[name="name"]');
+            const start = form.querySelector('[name="start_date"]');
+            const end = form.querySelector('[name="end_date"]');
+
+            if (name && !name.value.trim()){
+                addFieldError(name, 'Este campo es obligatorio.');
+                messages.push('Completá el nombre del proyecto.');
+                firstInvalid = firstInvalid || name;
+            }
+            if (start && !start.value){
+                addFieldError(start, 'Este campo es obligatorio.');
+                messages.push('Indicá la fecha de inicio.');
+                firstInvalid = firstInvalid || start;
+            }
+            if (end && !end.value){
+                addFieldError(end, 'Este campo es obligatorio.');
+                messages.push('Indicá la fecha de fin.');
+                firstInvalid = firstInvalid || end;
+            }
+            if (start && start.value && end && end.value){
+                const s = new Date(start.value);
+                const e = new Date(end.value);
+                if (e < s){
+                    addFieldError(end, 'La fecha de fin no puede ser anterior a la fecha de inicio.');
+                    messages.push('La fecha de fin no puede ser anterior a la fecha de inicio.');
+                    firstInvalid = firstInvalid || end;
+                }
+            }
+
+            // Necesidades
+            const cards = visibleCards();
+            if (cards.length === 0){
+                messages.push('Agregá al menos una necesidad.');
+                showTopErrors(messages);
+                return { ok:false, first:firstInvalid };
+            }
+
+            cards.forEach((card, i) => {
+                const type = card.querySelector('select[name^="needs-"][name$="-need_type"]');
+                const desc = card.querySelector('[name^="needs-"][name$="-need_description"]');
+                const qty  = card.querySelector('input[name^="needs-"][name$="-quantity"]');
+
+                if (type && (!type.value || type.value.trim()==='')){
+                    addFieldError(type, 'Seleccioná un tipo.');
+                    messages.push(`Necesidad ${i+1}: seleccioná un tipo.`);
+                    firstInvalid = firstInvalid || type;
+                }
+                if (desc && !desc.value.trim()){
+                    addFieldError(desc, 'Este campo es obligatorio.');
+                    messages.push(`Necesidad ${i+1}: completá el detalle.`);
+                    firstInvalid = firstInvalid || desc;
+                }
+
+                // Reglas para cantidad / monto
+                const isECON = type && type.value === 'ECON';
+                if (qty){
+                    const raw = qty.value.trim();
+                    if (isECON){
+                        if (raw === ''){
+                            addFieldError(qty, 'Ingresá un monto.');
+                            messages.push(`Necesidad ${i+1}: el monto es obligatorio para tipo Económica.`);
+                            firstInvalid = firstInvalid || qty;
+                        } else if (isNaN(raw) || Number(raw) < 0){
+                            addFieldError(qty, 'Ingresá un número mayor o igual a 0.');
+                            messages.push(`Necesidad ${i+1}: el monto debe ser un número ≥ 0.`);
+                            firstInvalid = firstInvalid || qty;
+                        }
+                    } else {
+                        if (raw !== '' && (isNaN(raw) || Number(raw) < 0)){
+                            addFieldError(qty, 'Ingresá un número mayor o igual a 0.');
+                            messages.push(`Necesidad ${i+1}: la cantidad debe ser un número ≥ 0.`);
+                            firstInvalid = firstInvalid || qty;
+                        }
+                    }
+                }
+            });
+
+            if (messages.length){
+                showTopErrors(messages);
+                if (firstInvalid){ firstInvalid.focus(); }
+                return { ok:false, first:firstInvalid };
+            }
+            return { ok:true };
+        };
+
+        // --- LISTENERS ---
+        add.addEventListener('click', addNeed);
+        list.querySelectorAll('.btn-remove').forEach(btn =>
+            btn.addEventListener('click', () => removeNeed(btn))
+        );
+        refreshRemoveState();
+
+        form.addEventListener('submit', (ev) => {
+            const res = validateForm();
+            if (!res.ok){
+                ev.preventDefault();
+                ev.stopPropagation();
+            }
+        });
+
+    })();
+</script>
 {% endblock %}

@@ -30,6 +30,11 @@ class NeedItemForm(forms.Form):
     need_type = forms.ChoiceField(label="Tipo de necesidad", choices=NEED_CHOICES)
     need_description = forms.CharField(label="Detalle", widget=forms.Textarea(attrs={"rows": 2}))
     quantity = forms.DecimalField(
-        label="Cantidad / Monto", decimal_places=2, max_digits=12, required=False,
+        label="Cantidad / Monto", decimal_places=2, max_digits=12, required=True,
         help_text="Para ECON: monto; para otras: unidades/personas."
+    )
+    needs_help = forms.BooleanField(
+        required=False,
+        label="Requiere ayuda de la red",
+        widget=forms.CheckboxInput(attrs={})
     )

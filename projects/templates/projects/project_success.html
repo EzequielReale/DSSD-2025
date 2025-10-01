@@ -1,23 +1,95 @@
-{% extends "projects/base.html" %}
+{% extends "base.html" %}
 {% block title %}Proyecto guardado{% endblock %}
+
 {% block content %}
-{% if bonita_error %}
-<div class="alert alert-warning">
-    {{ bonita_error }}
-</div>
-{% endif %}
-
 <div class="card">
-    <h2 class="center">Proyecto creado</h2>
-    <ul>
-        <li><strong>Nombre:</strong> {{ project.name }}</li>
-        <li><strong>Descripción:</strong> {{ project.description }}</li>
-        <li><strong>Inicio:</strong> {{ project.start_date }}</li>
-        <li><strong>Fin:</strong> {{ project.end_date }}</li>
-        <li><strong>Necesidades:</strong>
-            <pre>{{ project.necesidades|safe }}</pre>
-        </li>
-    </ul>
-</div>
 
+    {% if bonita_error %}
+    <div class="alert alert-warn" style="margin-bottom:1rem;">{{ bonita_error }}</div>
+    {% endif %}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <h2 style="margin:0;display:flex;align-items:center;gap:.5rem;">
+            <span style="display:inline-flex;width:22px;height:22px;border-radius:999px;background:#e8f3ff;border:1px solid #cfe3ff;color:#1f57bd;font-weight:700;align-items:center;justify-content:center;">✓</span>
+            Proyecto creado
+        </h2>
+        <div class="actions" style="margin:0">
+            <a class="btn" href="/">Inicio</a>
+            <a class="btn btn-primary" href="{% url 'projects:project_create' %}">Crear otro proyecto</a>
+        </div>
+    </div>
+
+    <hr>
+
+    <section class="grid grid-3">
+        <div>
+            <div class="muted" style="font-size:.9rem;">Nombre</div>
+            <div style="font-weight:600">{{ project.name }}</div>
+        </div>
+        <div>
+            <div class="muted" style="font-size:.9rem;">Fecha de inicio</div>
+            <div style="font-weight:600">{{ project.start_date }}</div>
+        </div>
+        <div>
+            <div class="muted" style="font-size:.9rem;">Fecha de fin</div>
+            <div style="font-weight:600">{{ project.end_date }}</div>
+        </div>
+    </section>
+
+    {% if project.description %}
+    <div style="margin-top:.85rem;">
+        <div class="muted" style="font-size:.9rem;">Descripción</div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:.6rem .75rem;">
+            {{ project.description }}
+        </div>
+    </div>
+    {% endif %}
+
+    <section style="margin-top:1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+            <h3 style="margin:.25rem 0;">Necesidades</h3>
+            {% if project.necesidades %}
+            <span class="muted" style="font-size:.9rem;">{{ project.necesidades|length }} ítem{{ project.necesidades|length|pluralize:"s" }}</span>
+            {% endif %}
+        </div>
+
+        {% if project.necesidades %}
+        <div class="grid grid-3">
+            {% for n in project.necesidades %}
+            <div class="card" style="padding:.8rem 1rem;">
+
+                <div style="margin-top:.35rem;">
+                    <div class="muted" style="font-size:.85rem;">Tipo</div>
+                    <div style="font-weight:600">
+                        {% if n.tipo == "ECON" %}Económica{% elif n.tipo == "MAT" %}Materiales{% elif n.tipo == "MO" %}Mano de obra{% else %}{{ n.tipo }}{% endif %}
+                    </div>
+                </div>
+
+                <div style="margin-top:.35rem;">
+                    <div class="muted" style="font-size:.85rem;">Detalle</div>
+                    <div>{{ n.detalle }}</div>
+                </div>
+
+                <div style="margin-top:.35rem;">
+                    <div class="muted" style="font-size:.85rem;">Cantidad / Monto</div>
+                    <div style="font-weight:600">
+                        {% if n.tipo == "ECON" %}$ {{ n.cantidad|floatformat:0 }}{% else %}{{ n.cantidad }}{% endif %}
+                    </div>
+                </div>
+
+                <div style="margin-top:.35rem;">
+                    <div class="muted" style="font-size:.85rem;">Requiere ayuda de la red</div>
+                    <div style="font-weight:600">
+                        {% if n.needs_help %} Si {% else %} No {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="muted">No se registraron necesidades.</div>
+        {% endif %}
+    </section>
+
+</div>
 {% endblock %}

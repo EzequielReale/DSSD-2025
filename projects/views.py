@@ -12,22 +12,10 @@ from integrations.bonita_client import BonitaClient
 @require_http_methods(["GET", "POST"])
 def project_create(request):
     NeedFormSet = formset_factory(
-        NeedItemForm, extra=1, can_delete=True, min_num=1, validate_min=True
+        NeedItemForm, extra=0, can_delete=True, min_num=1, validate_min=True
     )
 
     if request.method == "POST":
-        if "add_need" in request.POST:
-            post = request.POST.copy()
-            total = int(post.get("needs-TOTAL_FORMS", "0"))
-            post["needs-TOTAL_FORMS"] = str(total + 1)
-            return render(
-                request,
-                "projects/project_form.html",
-                {"form": ProjectModelForm(post),
-                 "formset": NeedFormSet(post, prefix="needs"),
-                 "error_msg": None},
-            )
-
         form = ProjectModelForm(request.POST)
         formset = NeedFormSet(request.POST, prefix="needs")
 
@@ -50,6 +38,7 @@ def project_create(request):
                     "tipo": t,
                     "detalle": det,
                     "cantidad": float(cant) if cant is not None else None,
+                    "ayuda": bool(f.get("needs_help", False)),
                 })
         if not necesidades:
             return render(
@@ -90,13 +79,16 @@ def project_create(request):
             "bonita_error": bonita_error,
         }
         return redirect("projects:project_success")
-
-    # GET
-    return render(
-        request,
-        "projects/project_form.html",
-        {"form": ProjectModelForm(), "formset": NeedFormSet(prefix="needs"), "error_msg": None},
-    )
+    else:
+        return render(
+            request,
+            "projects/project_form.html",
+            {
+                "form": ProjectModelForm(),
+                "formset": NeedFormSet(prefix="needs", initial=[{}]),
+                "error_msg": None
+            },
+        )
 
 
 def project_success(request):
