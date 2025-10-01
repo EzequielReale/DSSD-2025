@@ -7,7 +7,8 @@ class BonitaClient:
       - autenticar
       - iniciar un proceso
       - setear variables de caso (opcional)
-      - listar/asignar/ejecutar user tasks (sin contract)
+      - listar/asignar/ejecutar user tasks
+      - eliminar en caso de error con la BD
     """
 
     def __init__(self):
@@ -27,17 +28,14 @@ class BonitaClient:
             timeout=15,
         )
         r.raise_for_status()
-        # Token puro desde cookies
-        self.csrf = self.s.cookies.get("X-Bonita-API-Token")
+        self.csrf = r.headers.get("X-Bonita-API-Token") or self.s.cookies.get("X-Bonita-API-Token")
         if not self.csrf:
             raise RuntimeError("No se obtuvo X-Bonita-API-Token al autenticar en Bonita.")
 
     def _h_auth(self):
-        # Header solo de auth (para GET)
         return {"X-Bonita-API-Token": self.csrf}
 
     def _h_json(self):
-        # Header para JSON (POST/PUT)
         return {"X-Bonita-API-Token": self.csrf, "Content-Type": "application/json"}
 
     # ---------- procesos ----------
@@ -140,3 +138,30 @@ class BonitaClient:
             json={"contract": {}}, headers=self._h_json(), timeout=20
         )
         r.raise_for_status()
+
+    def ensure_login(self):
+        self._ensure_csrf()
+
+    def abort_case(self, case_id: str | int):
+        self._ensure_csrf()
+        # Intento borrar el case "vivo"
+        r = self.s.delete(f"{self.base}/API/bpm/case/{case_id}",
+                          headers=self._h_auth(), timeout=10)
+        if r.status_code in (200, 204):
+            return
+        if r.status_code == 404:
+            # Puede estar archivado: busco archivedCase por sourceObjectId
+            q = {"p": "0", "c": "1", "f": [f"sourceObjectId={case_id}"]}
+            r2 = self.s.get(f"{self.base}/API/bpm/archivedCase",
+                            headers=self._h_auth(), params=q, timeout=10)
+            r2.raise_for_status()
+            items = r2.json()
+            if not items:
+                return
+            arch_id = items[0]["id"]
+            r3 = self.s.delete(f"{self.base}/API/bpm/archivedCase/{arch_id}",
+                               headers=self._h_auth(), timeout=10)
+            if r3.status_code not in (200, 204):
+                raise RuntimeError(f"No se pudo eliminar archivedCase {arch_id}: {r3.status_code} {r3.text}")
+            return
+        raise RuntimeError(f"No se pudo abortar/eliminar case {case_id}: {r.status_code} {r.text}")
