@@ -42,12 +42,14 @@ def project_create(request):
         t = f.get("need_type")
         det = f.get("need_description")
         cant = f.get("quantity")
+        a = f.get("needs_help")
+
         if t and det:
             necesidades.append({
                 "tipo": t,
                 "detalle": det,
                 "cantidad": float(cant) if cant is not None else None,
-                "ayuda": bool(f.get("needs_help", False)),  # colaboración externa
+                "needs_help": a,  # colaboración externa
             })
     if not necesidades:
         return render(
@@ -81,7 +83,7 @@ def project_create(request):
         return render(
             request, "projects/project_form.html",
             {"form": form, "formset": formset,
-             "error_msg": f"No se pudo integrar con Bonita: {e}"},
+             "error_msg": f"No se pudo integrar con Bonita: Por favor, intente más tarde o contacte al administrador"},
         )
 
     # ---- 2) DB con transacción; si falla, compenso abortando el case ----

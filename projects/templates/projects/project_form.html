@@ -300,6 +300,11 @@
                     messages.push('La fecha de fin no puede ser anterior a la fecha de inicio.');
                     firstInvalid = firstInvalid || end;
                 }
+                if (e <= new Date()){
+                    addFieldError(end, 'La fecha de fin debe ser posterior a la fecha actual.');
+                    messages.push('La fecha de fin debe ser posterior a la fecha actual.');
+                    firstInvalid = firstInvalid || end;
+                }
             }
 
             // Necesidades
@@ -330,22 +335,10 @@
                 const isECON = type && type.value === 'ECON';
                 if (qty){
                     const raw = qty.value.trim();
-                    if (isECON){
-                        if (raw === ''){
-                            addFieldError(qty, 'Ingresá un monto.');
-                            messages.push(`Necesidad ${i+1}: el monto es obligatorio para tipo Económica.`);
-                            firstInvalid = firstInvalid || qty;
-                        } else if (isNaN(raw) || Number(raw) < 0){
-                            addFieldError(qty, 'Ingresá un número mayor o igual a 0.');
-                            messages.push(`Necesidad ${i+1}: el monto debe ser un número ≥ 0.`);
-                            firstInvalid = firstInvalid || qty;
-                        }
-                    } else {
-                        if (raw !== '' && (isNaN(raw) || Number(raw) < 0)){
-                            addFieldError(qty, 'Ingresá un número mayor o igual a 0.');
-                            messages.push(`Necesidad ${i+1}: la cantidad debe ser un número ≥ 0.`);
-                            firstInvalid = firstInvalid || qty;
-                        }
+                    if (raw !== '' && (isNaN(raw) || Number(raw) < 0)){
+                        addFieldError(qty, 'Ingresá un número mayor o igual a 0.');
+                        messages.push(`Necesidad ${i+1}: la cantidad debe ser un número ≥ 0.`);
+                        firstInvalid = firstInvalid || qty;
                     }
                 }
             });
