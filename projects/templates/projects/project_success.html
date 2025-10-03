@@ -48,14 +48,14 @@
     <section style="margin-top:1rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
             <h3 style="margin:.25rem 0;">Necesidades</h3>
-            {% if project.necesidades %}
-            <span class="muted" style="font-size:.9rem;">{{ project.necesidades|length }} ítem{{ project.necesidades|length|pluralize:"s" }}</span>
+            {% if project.needs %}
+            <span class="muted" style="font-size:.9rem;">{{ project.needs|length }} ítem{{ project.needs|length|pluralize:"s" }}</span>
             {% endif %}
         </div>
 
-        {% if project.necesidades %}
+        {% if project.needs %}
         <div class="grid grid-3">
-            {% for n in project.necesidades %}
+            {% for n in project.needs %}
             <div class="card" style="padding:.8rem 1rem;">
 
                 <div style="margin-top:.35rem;">

@@ -54,54 +54,56 @@ def project_create(request):
              "error_msg": "Debe indicar al menos una necesidad."},
         )
 
-    # ---- 1) Bonita primero (si falla, no hay DB) ----
-    try:
-        client = BonitaClient()
-        process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
-            settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
-        )
-        inst = client.start_process(process_id)
-        case_id = inst.get("caseId") or inst.get("processInstanceId") or inst.get("id")
-        client.set_case_var(case_id, "colaboracionesSolicitadas",
-                            len(necesidades), "java.lang.Integer")
+    client = None
+    case_id = None
+    project = None
 
-        tasks = client.find_ready_user_tasks(case_id)
-        if tasks:
-            task = next(
-                (t for t in tasks if t.get("displayName") == "Crear proyecto en la app"),
-                tasks[0],
-            )
-            uid = client.get_session_user_id()
-            client.assign_task(task["id"], uid)
-            client.execute_task(task["id"])
-
-    except Exception as e:
-        return render(
-            request, "projects/project_form.html",
-            {"form": form, "formset": formset,
-             "error_msg": f"No se pudo integrar con Bonita: Por favor, intente más tarde o contacte al administrador"},
-        )
-
-    # ---- 2) DB con transacción; si falla, compenso abortando el case ----
     try:
         with transaction.atomic():
             project: Project = form.save(commit=False)
-            project.necesidades = necesidades
+            project.needs = necesidades
+            project.save()
+
+            client = BonitaClient()
+            process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
+                settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
+            )
+            inst = client.start_process(process_id)
+            case_id = inst.get("caseId") or inst.get("processInstanceId") or inst.get("id")
+
+            client.set_case_var(case_id, "idProyecto", int(project.id), "java.lang.Long")
+            client.set_case_var(
+                case_id, "colaboracionesSolicitadas", len(necesidades), "java.lang.Integer"
+            )
+
+            tasks = client.find_ready_user_tasks(case_id)
+            if tasks:
+                task = next(
+                    (t for t in tasks if t.get("displayName") == "Crear proyecto en la app"),
+                    tasks[0],
+                )
+                uid = client.get_session_user_id()
+                client.assign_task(task["id"], uid)
+                client.execute_task(task["id"])
+
             if hasattr(project, "bonita_case_id"):
                 project.bonita_case_id = case_id
-            project.save()
-    except Exception as db_err:
+                project.save(update_fields=["bonita_case_id"])
+
+    except Exception as e:
         try:
-            client.abort_case(case_id)  # compensación
+            if client and case_id:
+                client.abort_case(case_id)
         except Exception:
             pass
         return render(
             request, "projects/project_form.html",
-            {"form": form, "formset": formset,
-             "error_msg": f"El proyecto no se pudo guardar: {db_err}"},
+            {
+                "form": form, "formset": formset,
+                "error_msg": f"No se pudo completar la operación (BD/Bonita). Intente más tarde o contacte al administrador. {e}"
+            },
         )
 
-    # ---- 3) éxito: Bonita + DB OK ----
     request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
     return redirect("projects:project_success")
 
