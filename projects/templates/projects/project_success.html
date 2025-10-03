@@ -71,10 +71,15 @@
                 </div>
 
                 <div style="margin-top:.35rem;">
-                    <div class="muted" style="font-size:.85rem;">Cantidad / Monto</div>
-                    <div style="font-weight:600">
-                        {% if n.tipo == "ECON" %}$ {{ n.cantidad|floatformat:2 }}{% else %}{{ n.cantidad|floatformat:0 }}{% endif %}
-                    </div>
+                    {% if n.tipo == "ECON" %}
+                        <div class="muted" style="font-size:.85rem;">Monto</div>
+                        {% with formatted=n.cantidad|floatformat:2 %}
+                        <div style="font-weight:600">$ {{ formatted }}</div>
+                        {% endwith %}
+                    {% else %}
+                        <div class="muted" style="font-size:.85rem;">Cantidad</div>
+                        <div style="font-weight:600">{{ n.cantidad|floatformat:0 }}</div>
+                    {% endif %}
                 </div>
 
                 <div style="margin-top:.35rem;">
