@@ -237,15 +237,33 @@
             const frag = tpl.content.cloneNode(true);
 
             frag.querySelectorAll('input, select, textarea, label').forEach(el => {
-                if (el.name && el.name.includes('__prefix__')) el.name = el.name.replaceAll('__prefix__', String(idx));
-                if (el.id && el.id.includes('__prefix__')) el.id = el.id.replaceAll('__prefix__', String(idx));
+                if (el.name && el.name.includes('__prefix__')) {
+                    el.name = el.name.replaceAll('__prefix__', String(idx));
+                }
+                if (el.id && el.id.includes('__prefix__')) {
+                    el.id = el.id.replaceAll('__prefix__', String(idx));
+                }
                 const f = el.getAttribute && el.getAttribute('for');
-                if (f && f.includes('__prefix__')) el.setAttribute('for', f.replaceAll('__prefix__', String(idx)));
-                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
-                if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                if (f && f.includes('__prefix__')) {
+                    el.setAttribute('for', f.replaceAll('__prefix__', String(idx)));
+                }
+
+                if (el.tagName === 'INPUT') {
+                    if (el.type === 'hidden') return;
+
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        el.checked = false;
+                        if (!el.value) el.value = 'true';
+                    } else {
+                        el.value = '';
+                    }
+                } else if (el.tagName === 'TEXTAREA') {
+                    el.value = '';
+                } else if (el.tagName === 'SELECT') {
+                    el.selectedIndex = 0;
+                }
             });
 
-            // wire quitar
             const rm = frag.querySelector('.btn-remove');
             if (rm) rm.addEventListener('click', () => removeNeed(rm));
 

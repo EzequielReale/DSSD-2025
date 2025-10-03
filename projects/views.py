@@ -39,18 +39,14 @@ def project_create(request):
     for f in formset.cleaned_data:
         if not f or f.get("DELETE"):
             continue
-        t = f.get("need_type")
-        det = f.get("need_description")
-        cant = f.get("quantity")
-        a = f.get("needs_help")
-
-        if t and det:
-            necesidades.append({
-                "tipo": t,
-                "detalle": det,
-                "cantidad": float(cant) if cant is not None else None,
-                "needs_help": a,  # colaboración externa
-            })
+        tipo = f.get("need_type")
+        cantidad = f.get("quantity")
+        necesidades.append({
+            "tipo": tipo,
+            "detalle": f.get("need_description"),
+            "cantidad": float(cantidad) if tipo == "ECON" else int(cantidad),
+            "ayuda": bool(f.get("needs_help"))
+        })
     if not necesidades:
         return render(
             request, "projects/project_form.html",

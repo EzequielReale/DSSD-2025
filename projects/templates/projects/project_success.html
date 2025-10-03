@@ -73,14 +73,14 @@
                 <div style="margin-top:.35rem;">
                     <div class="muted" style="font-size:.85rem;">Cantidad / Monto</div>
                     <div style="font-weight:600">
-                        {% if n.tipo == "ECON" %}$ {{ n.cantidad|floatformat:0 }}{% else %}{{ n.cantidad }}{% endif %}
+                        {% if n.tipo == "ECON" %}$ {{ n.cantidad|floatformat:2 }}{% else %}{{ n.cantidad|floatformat:0 }}{% endif %}
                     </div>
                 </div>
 
                 <div style="margin-top:.35rem;">
                     <div class="muted" style="font-size:.85rem;">Requiere ayuda de la red</div>
                     <div style="font-weight:600">
-                        {% if n.needs_help %} Si {% else %} No {% endif %}
+                        {% if n.ayuda %} Si {% else %} No {% endif %}
                     </div>
                 </div>
             </div>
