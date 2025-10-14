@@ -1,0 +1,17 @@
+.git
+__pycache__/
+*.py[cod]
+*.sqlite3
+.env
+/media
+/static
+/staticfiles
+node_modules
+.idea
+.vscode
+dist
+build
+venv
+staticfiles/
+.idea/
+.vscode/
