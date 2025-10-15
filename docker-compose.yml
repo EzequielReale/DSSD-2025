@@ -28,6 +28,8 @@ services:
       - "8000:8000"
     volumes:
       - .:/app:cached
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   dssd_pg_data:
