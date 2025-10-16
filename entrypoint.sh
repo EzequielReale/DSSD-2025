@@ -30,5 +30,12 @@ if not User.objects.filter(username=u).exists():
 PYCODE
 fi
 
+# ---- SEED con fixtures (opcional y simple) ----
+if [ "$SEED_ON_START" = "1" ]; then
+  echo "Cargando fixtures (loaddata)…"
+  python manage.py loaddata projects/fixtures/projects.json
+  python manage.py loaddata projects/fixtures/needs.json
+fi
+
 echo "Levantando Gunicorn..."
 exec gunicorn --workers 3 --timeout 120 --bind 0.0.0.0:${PORT:-8000} ProjectPlanning.wsgi:application
