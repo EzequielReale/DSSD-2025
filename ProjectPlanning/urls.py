@@ -1,29 +1,31 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.shortcuts import render
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from django.http import JsonResponse
-
-def health(_):
-    return JsonResponse({"status": "ok"})
-
-def home(request):
-    return render(request, "home.html")
+from . import views
 
 urlpatterns = [
-    path('', home, name='home'),
-    path('admin/', admin.site.urls),
-    path('projects/', include('projects.urls')),
+    path("", views.home, name="home"),
+    path("admin/", admin.site.urls),
 
-    # --- Healthcheck ---
-    path("health/", health),
-    # --- OpenAPI/Swagger ---
+    path("", include(("projects.urls", "projects"), namespace="projects")),
+
+    path("auth/login/",   views.login_page,   name="login_page"),
+    path("auth/login/submit/", views.login_submit, name="login_submit"),
+    path("auth/refresh/", views.refresh_access, name="refresh_access"),
+    path("auth/logout/",  views.logout_view,  name="logout"),
+
+    # Health
+    path("health/", views.health),
+
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    # --- JWT ---
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-
-    path('api/', include('projects.api.urls'))
+    path("api/", include("projects.api.urls")),
 ]
+
+handler404 = views.handler404
+handler500 = views.handler500
+handler403 = views.handler403
+handler400 = views.handler400

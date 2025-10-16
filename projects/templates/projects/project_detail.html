@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}Proyecto{% endblock %}
+
+{% block extra_head %}
+<style>
+    .project-header {
+        position: relative;
+    }
+
+    .project-title {
+        margin: 1rem 0 0.5rem 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--ink);
+    }
+
+    .project-description {
+        margin: 0 0 1.25rem 0;
+        color: var(--ink-2);
+        font-size: 1.05rem;
+        line-height: 1.6;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.85rem;
+        margin-top: 1.25rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+    }
+
+    .stat-label {
+        color: var(--ink-2);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--ink);
+    }
+
+    .view-toggle-card {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border: 1px solid;
+    }
+
+    .badge-neutral {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+        color: var(--ink-2);
+    }
+
+    .badge-ok {
+        background: #d1fae5;
+        border-color: #86efac;
+        color: #065f46;
+    }
+
+    .badge-warn {
+        background: #fef3c7;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+
+    .badge-pending {
+        background: #e0e7ff;
+        border-color: #c7d2fe;
+        color: #3730a3;
+    }
+
+    .view-link {
+        color: var(--brand);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: color 0.15s ease;
+    }
+
+    .view-link:hover {
+        color: var(--brand-600);
+        text-decoration: underline;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+    }
+
+    .section-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--ink);
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        margin-top: 1rem;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .table thead {
+        background: #f9fafb;
+        border-bottom: 2px solid var(--line);
+    }
+
+    .table th {
+        padding: 0.85rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--ink-2);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .table tbody tr {
+        border-bottom: 1px solid var(--line);
+        transition: background-color 0.15s ease;
+    }
+
+    .table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .table td {
+        padding: 1rem;
+        color: var(--ink);
+    }
+
+    .table td:first-child {
+        font-weight: 500;
+        color: var(--ink-2);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--ink-2);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.3;
+    }
+
+    @media (max-width: 768px) {
+        .project-title {
+            font-size: 1.5rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table {
+            font-size: 0.875rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.65rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stack">
+    <div class="card project-header">
+        <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
+        <h2 id="pname" class="project-title">Cargando…</h2>
+        <p id="pdesc" class="project-description"></p>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Fecha de Inicio</div>
+                <div class="stat-value" id="pstart">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Fecha de Fin</div>
+                <div class="stat-value" id="pend">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Vista Actual</div>
+                <div id="viewToggle" class="view-toggle-card"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Necesidades</h3>
+        </div>
+
+        <div id="err" class="alert alert-err" style="display:none"></div>
+
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Monto/Cant.</th>
+                    <th>Estado</th>
+                </tr>
+                </thead>
+                <tbody id="rows">
+                <tr><td colspan="4" class="muted center">Cargando…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    (async () => {
+        const projectId = {{ project_id }};
+        const qs = new URLSearchParams(location.search);
+        const includeAll = qs.get('all') === '1';
+        const apiUrl = includeAll
+            ? `/api/projects/${projectId}/?include_all=1`
+            : `/api/projects/${projectId}/`;
+
+        const err  = document.getElementById('err');
+        const rows = document.getElementById('rows');
+
+        try {
+            const r = await fetch(apiUrl, { credentials: 'same-origin' });
+            if (r.status === 401) {
+                const next = encodeURIComponent(location.pathname + location.search);
+                location.href = `/auth/login/?next=${next}`;
+                return;
+            }
+
+            const ctype = r.headers.get('content-type') || '';
+            if (!ctype.includes('application/json')) {
+                showError('Respuesta inesperada del servidor.');
+                return;
+            }
+
+            const data = await r.json();
+            if (!r.ok) {
+                showError(data?.detail || 'Error al cargar.');
+                return;
+            }
+
+            document.getElementById('pname').textContent = data.name || '(sin nombre)';
+            document.getElementById('pdesc').textContent = ("Descripción: " + data.description) || '(sin descripción)';
+            document.getElementById('pstart').textContent = data.start_date || '—';
+            document.getElementById('pend').textContent = data.end_date || '—';
+            document.getElementById('viewToggle').innerHTML = includeAll
+                ? `<span class="badge badge-neutral">Todas</span> <a class="view-link" href="?">ver solo abiertas</a>`
+                : `<span class="badge badge-neutral">Abiertas</span> <a class="view-link" href="?all=1">ver todas</a>`;
+
+            const list = Array.isArray(data.needs) ? data.needs : [];
+            if (!list.length) {
+                rows.innerHTML = `
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📝</div>
+                                <div>No hay necesidades para mostrar</div>
+                            </div>
+                        </td>
+                    </tr>`;
+                return;
+            }
+            rows.innerHTML = list.map(n => `
+        <tr>
+          <td>${n.type ?? ''}</td>
+          <td>${n.description ?? ''}</td>
+          <td>${n.amount ?? ''}</td>
+          <td>${
+                n.is_fulfilled ? `<span class="badge badge-ok">✓ Cumplida</span>` :
+                    n.needs_help   ? `<span class="badge badge-warn">⚠ Pide ayuda</span>` :
+                        `<span class="badge badge-pending">○ Pendiente</span>`
+            }</td>
+        </tr>
+      `).join('');
+        } catch (e) {
+            showError('No se pudo contactar con el servidor.');
+        }
+
+        function showError(msg){
+            err.textContent = msg;
+            err.style.display = 'block';
+            rows.innerHTML = `<tr><td colspan="4" class="center muted">Error al cargar.</td></tr>`;
+        }
+    })();
+</script>
+{% endblock %}

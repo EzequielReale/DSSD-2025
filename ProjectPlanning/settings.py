@@ -1,5 +1,6 @@
 from pathlib import Path
 import os, dotenv
+from datetime import timedelta
 
 dotenv.load_dotenv()
 
@@ -42,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'ProjectPlanning.middleware.JWTCookieMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -53,13 +55,14 @@ ROOT_URLCONF = 'ProjectPlanning.urls'
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],   # 👈 usa la carpeta global templates/
-        "APP_DIRS": True,                   # 👈 también busca en las apps
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "ProjectPlanning.context.auth_ctx",
             ],
         },
     },
@@ -82,8 +85,6 @@ DATABASES = {
     }
 }
 
-
-# --- DRF + JWT + OpenAPI ---
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -94,9 +95,11 @@ REST_FRAMEWORK = {
     ),
 }
 
-# SimpleJWT: usa JWT_SIGNING_KEY o cae en SECRET_KEY
 SIMPLE_JWT = {
     "SIGNING_KEY": os.getenv("JWT_SIGNING_KEY", os.getenv("DJANGO_SECRET_KEY", "insegura")),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
 }
 
 SPECTACULAR_SETTINGS = {

@@ -45,12 +45,10 @@
         }
         .nav a:hover, .nav a[aria-current="page"]{background:rgba(255,255,255,.08); color:#fff}
 
-        /* Layout */
         main{max-width:var(--mx); margin:1.25rem auto; padding:0 1rem}
         .container{max-width:var(--mx); margin:0 auto; padding:0 1rem}
         .stack > * + * {margin-top:1rem}
 
-        /* Card */
         .card{
             background:var(--card);
             border:1px solid var(--line);
@@ -59,7 +57,6 @@
             box-shadow:var(--shadow);
         }
 
-        /* Grid helpers */
         .grid{display:grid; gap:.85rem}
         .grid-2{grid-template-columns:1fr 1fr}
         .grid-3{grid-template-columns:1fr 1fr 1fr}
@@ -109,7 +106,20 @@
     <nav class="nav">
         <div style="display:flex; gap:.5rem; align-items:center;">
             <a href="/" aria-label="Inicio">Inicio</a>
-            <a href="{% url 'projects:project_create' %}" {% if request.path|slice:":9" == "/projects" %}aria-current="page"{% endif %}>Nuevo proyecto</a>
+            {% if is_authenticated %}
+                <a href="{% url 'projects:projects_list' %}">Proyectos</a>
+                <a href="{% url 'projects:needs' %}">Necesidades</a>
+                <a href="{% url 'projects:project_create' %}">Nuevo proyecto</a>
+            {% endif %}
+        </div>
+
+        <div style="display:flex; gap:.5rem; align-items:center;">
+            {% if is_authenticated %}
+            <span>Hola, {{ current_username|default:"usuario" }}</span>
+            <a class="btn-ghost" href="{% url 'logout' %}">Logout</a>
+            {% else %}
+            <a class="btn-ghost" href="{% url 'login_page' %}">Login</a>
+            {% endif %}
         </div>
     </nav>
 </header>

@@ -40,7 +40,6 @@
         </div>
     </section>
 
-    <!-- CÓMO FUNCIONA -->
     <section class="grid grid-3">
         <div class="feature-card">
             <div class="step">
@@ -73,7 +72,6 @@
         </div>
     </section>
 
-    <!-- QUÉ PODÉS HACER -->
     <section class="grid grid-2">
         <div class="feature-card">
             <h3>Qué vas a poder hacer</h3>
@@ -95,12 +93,20 @@
         </div>
     </section>
 
-    <!-- CTA FINAL -->
+    {% if is_authenticated %}
     <section class="card center">
         <h2 style="margin:.25rem 0;">¿Listo para empezar?</h2>
         <p class="muted" style="margin:0 0 .5rem 0">Creá tu primer proyecto ahora.</p>
         <a class="btn btn-primary" href="{% url 'projects:project_create' %}">➕ Nuevo proyecto</a>
     </section>
-
+    {% else%}
+    <section class="card center">
+        <h2 style="margin:.25rem 0;">¿Listo para empezar? Inicia sesión</h2>
+        <p class="muted" style="margin:.25rem 0 .75rem 0">
+            Iniciá sesión para poder realizar operaciones.
+        </p>
+        <a class="btn btn-primary" href="{% url 'login_page' %}">Iniciar sesión</a>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}

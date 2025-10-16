@@ -4,7 +4,7 @@ class NeedCreateSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=["ECON", "MAT", "MO", "OTRO"])
     description = serializers.CharField(max_length=1000)
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    needs_help = serializers.BooleanField(required=False, default=True)  # 👈
+    needs_help = serializers.BooleanField(required=False, default=True)
 
 class NeedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -13,7 +13,7 @@ class NeedSerializer(serializers.Serializer):
     description = serializers.CharField()
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     is_fulfilled = serializers.BooleanField()
-    needs_help = serializers.BooleanField()   # 👈
+    needs_help = serializers.BooleanField()
     commitments = serializers.ListField(child=serializers.DictField(), required=False)
 
 class CommitmentCreateSerializer(serializers.Serializer):

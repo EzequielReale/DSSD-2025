@@ -1,16 +1,12 @@
-# projects/api/views.py
 from typing import Any, Dict
 from decimal import Decimal
-
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated as IsAuth
-
 from projects.models import Project, Need, Commitment
 
 
@@ -134,7 +130,6 @@ class ProjectNeedsView(APIView):
             "updated_at": n.updated_at.isoformat(),
         }, status=status.HTTP_201_CREATED)
 
-
 class AllNeedsView(APIView):
     """
     GET /api/needs/
@@ -153,7 +148,7 @@ class AllNeedsView(APIView):
         qs = Need.objects.select_related("project")
 
         if not include_all:
-            qs = qs.filter(needs_help=True)
+            qs = qs.filter(needs_help=True, is_fulfilled=False)
         if type_filter:
             qs = qs.filter(type=type_filter)
         if project_id:

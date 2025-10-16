@@ -354,7 +354,6 @@
                     firstInvalid = firstInvalid || desc;
                 }
 
-                // Reglas para cantidad / monto
                 const isECON = type && type.value === 'ECON';
                 if (qty){
                     const raw = qty.value.trim();
@@ -374,7 +373,6 @@
             return { ok:true };
         };
 
-        // --- LISTENERS ---
         add.addEventListener('click', addNeed);
         list.querySelectorAll('.btn-remove').forEach(btn =>
             btn.addEventListener('click', () => removeNeed(btn))

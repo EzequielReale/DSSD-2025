@@ -1,0 +1,10 @@
+{% extends "base_error.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>{{ status }} - {{ title }}</h1>
+    <p>{{ message }}</p>
+    <a href="/" class="btn">Volver al inicio</a>
+</div>
+{% endblock %}

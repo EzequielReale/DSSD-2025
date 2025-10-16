@@ -1,19 +1,20 @@
 import json
 from decimal import Decimal
-
 from django.conf import settings
 from django.forms import formset_factory
 from django.shortcuts import render, redirect
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-
 
 from .forms import ProjectModelForm, NeedItemForm
 from .models import Project, Need, Notification
 from integrations.bonita_client import BonitaClient
+from ProjectPlanning.decorators import require_auth
 
+@require_auth
 @require_http_methods(["GET", "POST"])
 def project_create(request):
     NeedFormSet = formset_factory(
@@ -131,6 +132,7 @@ def project_create(request):
     request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
     return redirect("projects:project_success")
 
+@require_auth
 def project_success(request):
     data = request.session.get("submitted")
     if not data:
@@ -147,6 +149,22 @@ def project_success(request):
     context = {"project": project, "bonita_error": data.get("bonita_error")}
     return render(request, "projects/project_success.html", context)
 
+
+@require_auth
+def projects(request):
+    return render(request, "projects/projects.html")
+
+
+@require_auth
+def needs(request):
+    return render(request, "projects/needs.html")
+
+
+@require_auth
+def project_detail(request, project_id: int):
+    return render(request, "projects/project_detail.html", {"project_id": project_id})
+
+@require_auth
 @csrf_exempt
 def notify_ongs(request):
     """
