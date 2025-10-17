@@ -299,16 +299,17 @@
         if (type) {
             params.append('type', type);
         }
-
         if (includeAll) {
             params.append('include_all', '1');
         }
 
-        const url = `/api/needs/?${params.toString()}`;
+        // Pedimos JSON en la MISMA URL de la página
+        params.append('format', 'json');
+        const url = location.pathname + "?" + params.toString();
 
         let r;
         try {
-            r = await fetch(url, { redirect: 'manual', credentials: 'same-origin' });
+            r = await fetch(url, { credentials: 'same-origin' });
         } catch (e) {
             showError('No se pudo contactar con el servidor.');
             return;
@@ -317,7 +318,7 @@
         if (r.status === 401) {
             if (!sessionStorage.getItem(loginOnceKey)) {
                 sessionStorage.setItem(loginOnceKey, '1');
-                window.location.href = `/auth/login/?next=${encodeURIComponent(location.pathname)}`;
+                window.location.href = `/auth/login/?next=${encodeURIComponent(location.pathname + location.search)}`;
             } else {
                 showError('Sesión expirada. Volvé a iniciar sesión.');
             }
@@ -340,16 +341,17 @@
 
         if (!data.length) {
             rowsEl.innerHTML = `
-                <tr>
-                    <td colspan="7">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🔍</div>
-                            <div>No se encontraron necesidades con los filtros seleccionados</div>
-                        </div>
-                    </td>
-                </tr>`;
+    <tr>
+      <td colspan="7">
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <div>No se encontraron necesidades con los filtros seleccionados</div>
+        </div>
+      </td>
+    </tr>`;
             return;
         }
+
         const typeLabels = {
             'ECON': 'Económica',
             'MAT': 'Material',
@@ -358,15 +360,15 @@
         };
 
         rowsEl.innerHTML = data.map(n => `
-      <tr>
-        <td>${n.project_name ?? n.project_id ?? ''}</td>
-        <td><span class="badge badge-type">${typeLabels[n.type] || n.type}</span></td>
-        <td>${n.description}</td>
-        <td>${n.amount}</td>
-        <td><span class="badge ${n.needs_help ? 'badge-yes' : 'badge-no'}">${n.needs_help ? 'Sí' : 'No'}</span></td>
-        <td><span class="badge ${n.is_fulfilled ? 'badge-yes' : 'badge-no'}">${n.is_fulfilled ? 'Sí' : 'No'}</span></td>
-      </tr>
-    `).join('');
+  <tr>
+    <td>${n.project_name ?? n.project_id ?? ''}</td>
+    <td><span class="badge badge-type">${typeLabels[n.type] || n.type}</span></td>
+    <td>${n.description ?? ''}</td>
+    <td>${n.amount ?? ''}</td>
+    <td><span class="badge ${n.needs_help ? 'badge-yes' : 'badge-no'}">${n.needs_help ? 'Sí' : 'No'}</span></td>
+    <td><span class="badge ${n.is_fulfilled ? 'badge-yes' : 'badge-no'}">${n.is_fulfilled ? 'Sí' : 'No'}</span></td>
+  </tr>
+`).join('');
     }
 
     function showError(msg) {

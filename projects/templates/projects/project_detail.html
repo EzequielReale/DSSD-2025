@@ -259,9 +259,11 @@
         const projectId = {{ project_id }};
         const qs = new URLSearchParams(location.search);
         const includeAll = qs.get('all') === '1';
+
+        // MISMA URL con ?format=json (+ include_all si corresponde)
         const apiUrl = includeAll
-            ? `/api/projects/${projectId}/?include_all=1`
-            : `/api/projects/${projectId}/`;
+            ? (location.pathname + "?format=json&include_all=1")
+            : (location.pathname + "?format=json");
 
         const err  = document.getElementById('err');
         const rows = document.getElementById('rows');
@@ -287,7 +289,7 @@
             }
 
             document.getElementById('pname').textContent = data.name || '(sin nombre)';
-            document.getElementById('pdesc').textContent = ("Descripción: " + data.description) || '(sin descripción)';
+            document.getElementById('pdesc').textContent = ("Descripción: " + (data.description || '')) || '(sin descripción)';
             document.getElementById('pstart').textContent = data.start_date || '—';
             document.getElementById('pend').textContent = data.end_date || '—';
             document.getElementById('viewToggle').innerHTML = includeAll
@@ -297,28 +299,29 @@
             const list = Array.isArray(data.needs) ? data.needs : [];
             if (!list.length) {
                 rows.innerHTML = `
-                    <tr>
-                        <td colspan="4">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📝</div>
-                                <div>No hay necesidades para mostrar</div>
-                            </div>
-                        </td>
-                    </tr>`;
+      <tr>
+        <td colspan="4">
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <div>No hay necesidades para mostrar</div>
+          </div>
+        </td>
+      </tr>`;
                 return;
             }
+
             rows.innerHTML = list.map(n => `
-        <tr>
-          <td>${n.type ?? ''}</td>
-          <td>${n.description ?? ''}</td>
-          <td>${n.amount ?? ''}</td>
-          <td>${
+    <tr>
+      <td>${n.type ?? ''}</td>
+      <td>${n.description ?? ''}</td>
+      <td>${n.amount ?? ''}</td>
+      <td>${
                 n.is_fulfilled ? `<span class="badge badge-ok">✓ Cumplida</span>` :
                     n.needs_help   ? `<span class="badge badge-warn">⚠ Pide ayuda</span>` :
                         `<span class="badge badge-pending">○ Pendiente</span>`
             }</td>
-        </tr>
-      `).join('');
+    </tr>
+  `).join('');
         } catch (e) {
             showError('No se pudo contactar con el servidor.');
         }

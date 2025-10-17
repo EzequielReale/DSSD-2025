@@ -93,7 +93,7 @@
         </div>
     </section>
 
-    {% if is_authenticated %}
+    {% if request.user.is_authenticated %}
     <section class="card center">
         <h2 style="margin:.25rem 0;">¿Listo para empezar?</h2>
         <p class="muted" style="margin:0 0 .5rem 0">Creá tu primer proyecto ahora.</p>
@@ -105,7 +105,7 @@
         <p class="muted" style="margin:.25rem 0 .75rem 0">
             Iniciá sesión para poder realizar operaciones.
         </p>
-        <a class="btn btn-primary" href="{% url 'login_page' %}">Iniciar sesión</a>
+        <a class="btn btn-primary" href="{% url 'login' %}">Iniciar sesión</a>
     </section>
     {% endif %}
 </div>
