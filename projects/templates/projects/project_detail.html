@@ -203,6 +203,16 @@
             padding: 0.65rem 0.5rem;
         }
     }
+    .form-card {
+        background: #f9fafb;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-top: 1.5rem;
+    }
+    .form-card h4 {
+        margin: 0 0 1rem 0;
+    }
 </style>
 {% endblock %}
 
@@ -210,46 +220,102 @@
 <div class="stack">
     <div class="card project-header">
         <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
+        
         <h2 id="pname" class="project-title">Cargando…</h2>
         <p id="pdesc" class="project-description"></p>
-
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Fecha de Inicio</div>
-                <div class="stat-value" id="pstart">—</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Fecha de Fin</div>
-                <div class="stat-value" id="pend">—</div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
+                {{ message }}
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Vista Actual</div>
-                <div id="viewToggle" class="view-toggle-card"></div>
-            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Necesidades (desde API)</h3>
+        </div>
+        <div id="err" class="alert alert-err" style="display:none"></div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead><tr><th>Tipo</th><th>Descripción</th><th>Monto/Cant.</th><th>Estado</th></tr></thead>
+                <tbody id="rows"><tr><td colspan="4" class="muted center">Cargando…</td></tr></tbody>
+            </table>
         </div>
     </div>
 
     <div class="card">
         <div class="section-header">
-            <h3 class="section-title">Necesidades</h3>
+            <h3 class="section-title">Etapas</h3>
         </div>
-
-        <div id="err" class="alert alert-err" style="display:none"></div>
-
         <div class="table-wrapper">
             <table class="table">
-                <thead>
-                <tr>
-                    <th>Tipo</th>
-                    <th>Descripción</th>
-                    <th>Monto/Cant.</th>
-                    <th>Estado</th>
-                </tr>
-                </thead>
-                <tbody id="rows">
-                <tr><td colspan="4" class="muted center">Cargando…</td></tr>
+                <thead><tr><th>Nombre</th><th>Descripción</th><th>Inicio</th><th>Fin</th></tr></thead>
+                <tbody>
+                    {% for stage in stages %}
+                    <tr>
+                        <td>{{ stage.name }}</td>
+                        <td>{{ stage.description|default:"-" }}</td>
+                        <td>{{ stage.start_date|date:"Y-m-d" }}</td>
+                        <td>{{ stage.end_date|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4">
+                        <div class="empty-state">No hay etapas registradas.</div>
+                    </td></tr>
+                    {% endfor %}
                 </tbody>
             </table>
+        </div>
+        
+        <div class="form-card">
+            <h4>Agregar Nueva Etapa</h4>
+            <form action="{% url 'projects:add_stage' project.id %}" method="post">
+                {% csrf_token %}
+                {{ stage_form.as_p }}
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Guardar Etapa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h3 class="section-title">Observaciones del Consejo</h3>
+        </div>
+        <div class="table-wrapper">
+            <table class="table">
+                <thead><tr><th>Observador</th><th>Observación</th><th>Fecha</th></tr></thead>
+                <tbody>
+                    {% for obs in observations %}
+                    <tr>
+                        <td>{{ obs.observer_label }}</td>
+                        <td>{{ obs.text }}</td>
+                        <td>{{ obs.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3">
+                        <div class="empty-state">No hay observaciones.</div>
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="form-card">
+            <h4>Cargar Observación</h4>
+            <form action="{% url 'projects:add_observation' project.id %}" method="post">
+                {% csrf_token %}
+                {{ observation_form.as_p }}
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Guardar Observación</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
