@@ -1,5 +1,5 @@
 from django import forms
-from .models import Project
+from .models import Project, Stage, Observation
 
 
 class ProjectModelForm(forms.ModelForm):
@@ -25,7 +25,7 @@ class ProjectModelForm(forms.ModelForm):
 
 class NeedItemForm(forms.Form):
     """
-    Formulario para agregar una necesidad a un proyecto (se enviará a la API).
+    Formulario para agregar una necesidad (CollaborationRequest) a un proyecto.
     """
     NEED_CHOICES = [
         ("ECON", "Económica"),
@@ -50,31 +50,31 @@ class NeedItemForm(forms.Form):
         widget=forms.CheckboxInput(attrs={})
     )
 
-class StageForm(forms.Form):
+class StageForm(forms.ModelForm):
     """
-    Formulario para crear una Etapa (se enviará a la API).
-    """
-    name = forms.CharField(
-        label="Nombre de la Etapa",
-        widget=forms.TextInput(attrs={"placeholder": "Ej: Cimientos"})
-    )
-    description = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 2, "placeholder": "Breve descripción de la etapa"}), 
-        required=False
-    )
-    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    Formulario para agregar o editar una etapa del plan de trabajo de un proyecto."""
+    class Meta:
+        model = Stage
+        fields = ['name', 'description', 'start_date', 'end_date']
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "Ej: Cimientos"}),
+            "description": forms.Textarea(attrs={"rows": 2, "placeholder": "Breve descripción de la etapa"}), 
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
+        }
 
-class ObservationForm(forms.Form):
+
+class ObservationForm(forms.ModelForm):
     """
-    Formulario para cargar una Observación (se enviará a la API).
-    """
-    observer_label = forms.CharField(
-        label="Observador", 
-        initial="Consejo Directivo",
-        widget=forms.TextInput(attrs={"readonly": True}) # Solo el consejo puede
-    )
-    text = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Escriba la observación o sugerencia"}), 
-        label="Observación"
-    )
+    Formulario para agregar una observación del Consejo Directivo a un proyecto."""
+    class Meta:
+        model = Observation
+        fields = ['observer_label', 'text']
+        widgets = {
+            "observer_label": forms.TextInput(attrs={"readonly": True}),
+            "text": forms.Textarea(attrs={"rows": 3, "placeholder": "Escriba la observación o sugerencia"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['observer_label'].initial = "Consejo Directivo"

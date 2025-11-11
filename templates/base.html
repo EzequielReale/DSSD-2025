@@ -45,6 +45,24 @@
         }
         .nav a:hover, .nav a[aria-current="page"]{background:rgba(255,255,255,.08); color:#fff}
 
+        .nav-btn {
+            background: none; /* Quita el fondo de botón */
+            border: none; /* Quita el borde de botón */
+            font: inherit; /* Usa la misma fuente que el resto */
+            cursor: pointer; /* Mantiene la manito */
+            
+            /* Estas son las mismas reglas que .nav a */
+            color: #e5e7eb;
+            text-decoration: none;
+            padding: .35rem .6rem;
+            border-radius: 8px;
+            vertical-align: middle; /* Ayuda a alinearlo bien */
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, .08);
+            color: #fff;
+        }
+
         main{max-width:var(--mx); margin:1.25rem auto; padding:0 1rem}
         .container{max-width:var(--mx); margin:0 auto; padding:0 1rem}
         .stack > * + * {margin-top:1rem}
@@ -116,7 +134,10 @@
         <div style="display:flex; gap:.5rem; align-items:center;">
             {% if request.user.is_authenticated %}
             <span>Hola, {{ request.user.username|default:"usuario" }}</span>
-            <a class="btn-ghost" href="{% url 'logout' %}">Salir</a>
+            <form action="{% url 'logout' %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="nav-btn">Cerrar Sesión</button>
+            </form>
             {% else %}
             <a class="btn-ghost" href="{% url 'login' %}">Ingresar</a>
             {% endif %}
