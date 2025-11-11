@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Proyectos{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--ink);
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        margin-top: 1rem;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .table thead {
+        background: #f9fafb;
+        border-bottom: 2px solid var(--line);
+    }
+
+    .table th {
+        padding: 0.85rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--ink-2);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .table tbody tr {
+        border-bottom: 1px solid var(--line);
+        transition: background-color 0.15s ease;
+    }
+
+    .table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .table td {
+        padding: 1rem;
+        color: var(--ink);
+    }
+
+    .table td:first-child {
+        font-weight: 500;
+        color: var(--ink-2);
+    }
+
+    .table a {
+        color: var(--brand);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.15s ease;
+    }
+
+    .table a:hover {
+        color: var(--brand-600);
+        text-decoration: underline;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        background: #e5e7eb;
+        color: var(--ink-2);
+    }
+
+    .badge-total {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-open {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-fulfilled {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--ink-2);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.3;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .table {
+            font-size: 0.875rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.65rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <h2>Proyectos</h2>
+        <a class="btn btn-icon" href="{% url 'projects:projects_list' %}">
+            <span>↻</span>
+            <span>Refrescar</span>
+        </a>
+    </div>
+
+    <div id="err" class="alert alert-err" style="display:none"></div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th></th> </tr>
+            </thead>
+            <tbody id="rows">
+                {% for p in projects %}
+                <tr>
+                    <td><a href="{% url 'projects:project_detail' p.id %}">{{ p.name|default:"" }}</a></td>
+                    <td>{{ p.start_date|date:"Y-m-d" }}</td>
+                    <td>{{ p.end_date|date:"Y-m-d" }}</td>
+                    <td>
+                        <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div>No hay proyectos todavía</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

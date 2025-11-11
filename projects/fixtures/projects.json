@@ -1,0 +1,30 @@
+[
+  {
+    "model": "projects.project",
+    "pk": 1,
+    "fields": {
+      "name": "Mejora de viviendas Barrio Norte",
+      "description": "Plan de refacción de 10 viviendas",
+      "start_date": "2025-11-01",
+      "end_date": "2026-03-31",
+      "created_by_ong": "ONG Demo",
+      "bonita_case_id": null,
+      "created_at": "2025-10-01T00:00:00Z",
+      "updated_at": "2025-10-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "projects.project",
+    "pk": 2,
+    "fields": {
+      "name": "Paneles solares Escuela 12",
+      "description": "Instalación de 15 paneles solares",
+      "start_date": "2025-10-20",
+      "end_date": "2026-02-15",
+      "created_by_ong": "ONG Luz",
+      "bonita_case_id": null,
+      "created_at": "2025-10-01T00:00:00Z",
+      "updated_at": "2025-10-01T00:00:00Z"
+    }
+  }
+]

@@ -45,12 +45,28 @@
         }
         .nav a:hover, .nav a[aria-current="page"]{background:rgba(255,255,255,.08); color:#fff}
 
-        /* Layout */
+        .nav-btn {
+            background: none; /* Quita el fondo de botón */
+            border: none; /* Quita el borde de botón */
+            font: inherit; /* Usa la misma fuente que el resto */
+            cursor: pointer; /* Mantiene la manito */
+            
+            /* Estas son las mismas reglas que .nav a */
+            color: #e5e7eb;
+            text-decoration: none;
+            padding: .35rem .6rem;
+            border-radius: 8px;
+            vertical-align: middle; /* Ayuda a alinearlo bien */
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, .08);
+            color: #fff;
+        }
+
         main{max-width:var(--mx); margin:1.25rem auto; padding:0 1rem}
         .container{max-width:var(--mx); margin:0 auto; padding:0 1rem}
         .stack > * + * {margin-top:1rem}
 
-        /* Card */
         .card{
             background:var(--card);
             border:1px solid var(--line);
@@ -59,7 +75,6 @@
             box-shadow:var(--shadow);
         }
 
-        /* Grid helpers */
         .grid{display:grid; gap:.85rem}
         .grid-2{grid-template-columns:1fr 1fr}
         .grid-3{grid-template-columns:1fr 1fr 1fr}
@@ -108,8 +123,24 @@
 <header>
     <nav class="nav">
         <div style="display:flex; gap:.5rem; align-items:center;">
-            <a href="/" aria-label="Inicio">Inicio</a>
-            <a href="{% url 'projects:project_create' %}" {% if request.path|slice:":9" == "/projects" %}aria-current="page"{% endif %}>Nuevo proyecto</a>
+            <a href="{% url 'home' %}" aria-label="Inicio">Inicio</a>
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'projects:projects_list' %}">Proyectos</a>
+                <a href="{% url 'projects:needs' %}">Necesidades</a>
+                <a href="{% url 'projects:project_create' %}">Nuevo proyecto</a>
+            {% endif %}
+        </div>
+
+        <div style="display:flex; gap:.5rem; align-items:center;">
+            {% if request.user.is_authenticated %}
+            <span>Hola, {{ request.user.username|default:"usuario" }}</span>
+            <form action="{% url 'logout' %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="nav-btn">Cerrar Sesión</button>
+            </form>
+            {% else %}
+            <a class="btn-ghost" href="{% url 'login' %}">Ingresar</a>
+            {% endif %}
         </div>
     </nav>
 </header>

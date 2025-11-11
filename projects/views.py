@@ -1,14 +1,30 @@
+import json
+from decimal import Decimal
+
 from django.conf import settings
 from django.forms import formset_factory
-from django.shortcuts import render, redirect
-from django.views.decorators.http import require_http_methods
+from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
+from django.http import JsonResponse, Http404
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Count, Q
+from django.utils.dateformat import format as dfmt
 
-from .forms import ProjectModelForm, NeedItemForm
-from .models import Project
+from .forms import ProjectModelForm, NeedItemForm, StageForm, ObservationForm
+from .models import Project, CollaborationRequest, Stage, Observation, RequestStatus
 from integrations.bonita_client import BonitaClient
 
 
+def _wants_json(request):
+    return (
+            request.GET.get("format") == "json"
+            or "application/json" in (request.headers.get("Accept") or "")
+    )
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def project_create(request):
     NeedFormSet = formset_factory(
@@ -31,7 +47,8 @@ def project_create(request):
 
     if not (form.is_valid() and formset.is_valid()):
         return render(
-            request, "projects/project_form.html",
+            request,
+            "projects/project_form.html",
             {"form": form, "formset": formset, "error_msg": None},
         )
 
@@ -44,12 +61,14 @@ def project_create(request):
         necesidades.append({
             "tipo": tipo,
             "detalle": f.get("need_description"),
-            "cantidad": float(cantidad) if tipo == "ECON" else int(cantidad),
-            "ayuda": bool(f.get("needs_help"))
+            "cantidad": cantidad, # El modelo maneja Decimal
+            "ayuda": bool(f.get("needs_help")),
         })
+
     if not necesidades:
         return render(
-            request, "projects/project_form.html",
+            request,
+            "projects/project_form.html",
             {"form": form, "formset": formset,
              "error_msg": "Debe indicar al menos una necesidad."},
         )
@@ -60,22 +79,35 @@ def project_create(request):
 
     try:
         with transaction.atomic():
-            project: Project = form.save(commit=False)
-            project.needs = necesidades
+            project = form.save(commit=False)
+            project.created_by_ong = form.cleaned_data.get("created_by_ong") or "ONG Demo"
             project.save()
 
+            for n_data in necesidades:
+                CollaborationRequest.objects.create(
+                    project=project,
+                    title=n_data.get("detalle", "Sin título")[:200], # Usar max_length del modelo
+                    description=n_data.get("detalle"),
+                    request_type=n_data.get("tipo"),
+                    target_qty=n_data.get("cantidad", 0),
+                    # El status por defecto es OPEN
+                )
+
+            # --- Interacción con Bonita BPM ---
             client = BonitaClient()
             process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
                 settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
             )
+
             inst = client.start_process(process_id)
-            case_id = inst.get("caseId") or inst.get("processInstanceId") or inst.get("id")
-
-            client.set_case_var(case_id, "idProyecto", int(project.id), "java.lang.Long")
-            client.set_case_var(
-                case_id, "colaboracionesSolicitadas", len(necesidades), "java.lang.Integer"
+            case_id = (
+                    inst.get("caseId")
+                    or inst.get("processInstanceId")
+                    or inst.get("id")
             )
-
+            
+            client.set_case_var(case_id, "idProyecto", int(project.id), "java.lang.Long")
+            client.set_case_var(case_id, "colaboracionesSolicitadas", len(necesidades), "java.lang.Integer")
             tasks = client.find_ready_user_tasks(case_id)
             if tasks:
                 task = next(
@@ -86,9 +118,8 @@ def project_create(request):
                 client.assign_task(task["id"], uid)
                 client.execute_task(task["id"])
 
-            if hasattr(project, "bonita_case_id"):
-                project.bonita_case_id = case_id
-                project.save(update_fields=["bonita_case_id"])
+            project.bonita_case_id = case_id
+            project.save(update_fields=["bonita_case_id"])
 
     except Exception as e:
         try:
@@ -97,25 +128,226 @@ def project_create(request):
         except Exception:
             pass
         return render(
-            request, "projects/project_form.html",
+            request,
+            "projects/project_form.html",
             {
-                "form": form, "formset": formset,
-                "error_msg": f"No se pudo completar la operación (BD/Bonita). Intente más tarde o contacte al administrador. {e}"
+                "form": form,
+                "formset": formset,
+                "error_msg": (
+                        "No se pudo completar la operación (BD/Bonita). "
+                        "Intente más tarde o contacte al administrador. " + str(e)
+                ),
             },
         )
 
+    # Éxito
     request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
     return redirect("projects:project_success")
 
 
+@login_required
 def project_success(request):
     data = request.session.get("submitted")
     if not data:
         return redirect("projects:project_create")
 
-    project = Project.objects.filter(pk=data.get("project_id")).first()
+    project = Project.objects.filter(pk=data.get("project_id")).first()    
+    
     if not project:
         return redirect("projects:project_create")
+    
+    needs = project.requests.all()
 
-    context = {"project": project, "bonita_error": data.get("bonita_error")}
+    context = {
+        "project": project, 
+        "bonita_error": data.get("bonita_error"),
+        "needs": needs # Pasamos las necesidades locales
+    }
     return render(request, "projects/project_success.html", context)
+
+
+@login_required
+def projects(request):
+    """
+    Devuelve la lista de proyectos
+    """
+    if _wants_json(request):
+        return JsonResponse({"error": "Endpoint JSON obsoleto"}, status=400)
+
+    projects_list = Project.objects.all()
+    
+    return render(request, "projects/projects.html", {
+        "projects": projects_list
+    })
+
+
+@login_required
+def needs(request):
+    """
+    /needs/?format=json[&type=ECON|MAT|MO|OTRO][&include_all=1] → JSON de necesidades
+    """
+    if _wants_json(request):
+        
+        t = request.GET.get('type')
+        include_all = request.GET.get('include_all') in ('1', 'true', 'True')
+
+        try:
+            q = CollaborationRequest.objects.select_related('project')
+            
+            if t:
+                q = q.filter(request_type=t)
+            
+            if not include_all:
+                q = q.filter(status=RequestStatus.OPEN)
+
+            response_data = []
+            for item in q:
+                response_data.append({
+                    "project_name": item.project.name,
+                    "project_id": item.project.id,
+                    "type": item.request_type,
+                    "description": item.description,
+                    "amount": float(item.target_qty),
+                    "needs_help": bool(item.needs_help),
+                    "is_fulfilled": item.status == RequestStatus.COMPLETED,
+                })
+
+            return JsonResponse(response_data, safe=False)
+        
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return render(request, "projects/needs.html")
+
+
+@login_required
+def project_detail(request, project_id: int):
+    """
+    /proyectos/<id>/ → HTML
+    /proyectos/<id>/?format=json[&include_all=1] → JSON con detalle + necesidades
+    """
+    project = get_object_or_404(Project, pk=project_id)
+    
+    if _wants_json(request):        
+        include_all = request.GET.get("include_all") in ("1", "true", "True")
+        
+        q_needs = project.requests.all()
+        if not include_all:
+            q_needs = q_needs.filter(status=RequestStatus.OPEN)
+
+        def fmt(d): return dfmt(d, "Y-m-d") if d else ""
+
+        payload = {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description or "",
+            "start_date": fmt(project.start_date),
+            "end_date": fmt(project.end_date),
+            "needs": [{
+                "type": n.request_type,
+                "description": n.description,
+                "amount": float(n.target_qty),
+                "is_fulfilled": n.status == RequestStatus.COMPLETED,
+                "needs_help": bool(n.needs_help),
+            } for n in q_needs]
+        }
+        return JsonResponse(payload, safe=False)
+
+    try:
+        stages = project.stages.all()
+        observations = project.observations.all()
+    except Exception as e:
+        messages.error(request, f"Error al consultar la base de datos: {e}")
+        stages = []
+        observations = []
+
+    context = {
+        "project_id": project.id, 
+        "project": project,       
+        "stages": stages or [],
+        "observations": observations or [],
+        "stage_form": StageForm(), 
+        "observation_form": ObservationForm(), 
+    }
+    return render(request, "projects/project_detail.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_stage(request, project_id: int):
+    project = get_object_or_404(Project, pk=project_id)
+    form = StageForm(request.POST) 
+    
+    if form.is_valid():
+        try:
+            stage = form.save(commit=False)
+            stage.project = project
+            stage.save()
+            messages.success(request, "Etapa agregada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al guardar la etapa: {e}")
+    else:
+        messages.error(request, "El formulario de etapa contenía errores.")
+        
+    return redirect("projects:project_detail", project_id=project_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_observation(request, project_id: int):
+    project = get_object_or_404(Project, pk=project_id)
+    form = ObservationForm(request.POST)
+    
+    if form.is_valid():
+        try:
+            observation = form.save(commit=False)
+            observation.project = project
+            observation.save()
+            messages.success(request, "Observación agregada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al guardar la observación: {e}")
+    else:
+        messages.error(request, "El formulario de observación contenía errores.")
+
+    return redirect("projects:project_detail", project_id=project_id)
+    
+
+# @csrf_exempt
+# def notify_ongs(request):
+#     """
+#     (Sin cambios, esta vista es interna/bonita)
+#     """
+#     if request.method != "POST":
+#         return JsonResponse({"error": "Método inválido"}, status=405)
+#     # ... (resto del código sin cambios)
+#     try:
+#         data = json.loads(request.body.decode("utf-8"))
+#         project_name = data.get("projectName") or "Proyecto sin nombre"
+#         summary = data.get("summary") or "Nueva solicitud de colaboración."
+# 
+#         Notification.objects.create(
+#             title=f"Nuevo proyecto: {project_name}",
+#             message=summary
+#         )
+# 
+#         return JsonResponse({"ok": True})
+#     except Exception as e:
+#         return JsonResponse({"error": str(e)}, status=400)
+
+
+# @login_required
+# def notifications(request):
+#     """
+#     (Sin cambios, esta vista es interna)
+#     """
+#     nots = Notification.objects.order_by("-created_at")[:10]
+#     # ... (resto del código sin cambios)
+#     data = [
+#         {
+#             "title": n.title,
+#             "message": n.message,
+#             "created_at": n.created_at.strftime("%d/%m/%Y %H:%M"),
+#         }
+#         for n in nots
+#     ]
+#     return JsonResponse(data, safe=False)

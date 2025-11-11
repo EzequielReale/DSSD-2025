@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dssd
+      POSTGRES_USER: dssd_user
+      POSTGRES_PASSWORD: dssd_pass
+    ports:
+      - "55432:5432"
+    volumes:
+      - dssd_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dssd_user -d dssd"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["/app/entrypoint.sh"]
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app:cached
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  dssd_pg_data:

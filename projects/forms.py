@@ -1,26 +1,32 @@
 from django import forms
-from .models import Project
+from .models import Project, Stage, Observation
 
 
 class ProjectModelForm(forms.ModelForm):
+    """
+    Formulario para crear/editar un Proyecto.
+    """
+    created_by_ong = forms.CharField(
+        label="ONG creadora",
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Nombre de la ONG"})
+    )
+
     class Meta:
         model = Project
-        fields = ["name", "description", "start_date", "end_date"]
+        fields = ["name", "description", "start_date", "end_date", "created_by_ong"]
         widgets = {
+            "name": forms.TextInput(attrs={"placeholder":"Nombre del proyecto"}),
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
-            "description": forms.Textarea(),
+            "description": forms.Textarea(attrs={"placeholder":"Describa brevemente el proyecto"}),
         }
-
-    def clean(self):
-        cleaned = super().clean()
-        sd, ed = cleaned.get("start_date"), cleaned.get("end_date")
-        if sd and ed and ed < sd:
-            self.add_error("end_date", "La fecha de fin no puede ser anterior a la de inicio.")
-        return cleaned
 
 
 class NeedItemForm(forms.Form):
+    """
+    Formulario para agregar una necesidad (CollaborationRequest) a un proyecto.
+    """
     NEED_CHOICES = [
         ("ECON", "Económica"),
         ("MAT",  "Materiales"),
@@ -28,7 +34,12 @@ class NeedItemForm(forms.Form):
         ("OTRO", "Otro"),
     ]
     need_type = forms.ChoiceField(label="Tipo de necesidad", choices=NEED_CHOICES)
-    need_description = forms.CharField(label="Detalle", widget=forms.Textarea(attrs={"rows": 2}))
+    need_description = forms.CharField(
+        label="Detalle",
+        widget=forms.Textarea(attrs={
+            "rows": 2,
+            "placeholder": "Ingrese una descripción de la necesidad"
+    }))
     quantity = forms.DecimalField(
         label="Cantidad / Monto", decimal_places=2, max_digits=12, required=True,
         help_text="Para ECON: monto; para otras: unidades/personas."
@@ -38,3 +49,32 @@ class NeedItemForm(forms.Form):
         label="Requiere ayuda de la red",
         widget=forms.CheckboxInput(attrs={})
     )
+
+class StageForm(forms.ModelForm):
+    """
+    Formulario para agregar o editar una etapa del plan de trabajo de un proyecto."""
+    class Meta:
+        model = Stage
+        fields = ['name', 'description', 'start_date', 'end_date']
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "Ej: Cimientos"}),
+            "description": forms.Textarea(attrs={"rows": 2, "placeholder": "Breve descripción de la etapa"}), 
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class ObservationForm(forms.ModelForm):
+    """
+    Formulario para agregar una observación del Consejo Directivo a un proyecto."""
+    class Meta:
+        model = Observation
+        fields = ['observer_label', 'text']
+        widgets = {
+            "observer_label": forms.TextInput(attrs={"readonly": True}),
+            "text": forms.Textarea(attrs={"rows": 3, "placeholder": "Escriba la observación o sugerencia"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['observer_label'].initial = "Consejo Directivo"

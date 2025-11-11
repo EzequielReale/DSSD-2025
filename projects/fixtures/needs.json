@@ -1,0 +1,44 @@
+[
+  {
+    "model": "projects.need",
+    "pk": 1,
+    "fields": {
+      "project": 1,
+      "type": "ECON",
+      "description": "Compra de materiales para 10 viviendas",
+      "amount": "15000.00",
+      "needs_help": true,
+      "is_fulfilled": false,
+      "created_at": "2025-10-01T00:00:00Z",
+      "updated_at": "2025-10-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "projects.need",
+    "pk": 2,
+    "fields": {
+      "project": 1,
+      "type": "MO",
+      "description": "Cuadrilla de 5 albañiles por 2 semanas",
+      "amount": "80.00",
+      "needs_help": true,
+      "is_fulfilled": false,
+      "created_at": "2025-10-01T00:00:00Z",
+      "updated_at": "2025-10-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "projects.need",
+    "pk": 3,
+    "fields": {
+      "project": 2,
+      "type": "MAT",
+      "description": "15 paneles solares (300W)",
+      "amount": "15.00",
+      "needs_help": true,
+      "is_fulfilled": false,
+      "created_at": "2025-10-01T00:00:00Z",
+      "updated_at": "2025-10-01T00:00:00Z"
+    }
+  }
+]

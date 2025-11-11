@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}Necesidades {% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .page-title {
+        margin: 0 0 1.25rem 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--ink);
+    }
+
+    .filters-card {
+        background: #f9fafb;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 160px;
+    }
+
+    .filter-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--ink-2);
+    }
+
+    .filter-select {
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        font: inherit;
+        color: var(--ink);
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px var(--focus);
+    }
+
+    .checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        user-select: none;
+        padding: 0.6rem 0;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: auto;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        margin-left: auto;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+    }
+
+    .section-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--ink);
+    }
+
+    .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        margin-top: 1rem;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .table thead {
+        background: #f9fafb;
+        border-bottom: 2px solid var(--line);
+    }
+
+    .table th {
+        padding: 0.85rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--ink-2);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .table tbody tr {
+        border-bottom: 1px solid var(--line);
+        transition: background-color 0.15s ease;
+    }
+
+    .table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .table td {
+        padding: 1rem;
+        color: var(--ink);
+    }
+
+    .table td:first-child {
+        font-weight: 500;
+        color: var(--ink-2);
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .badge-yes {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-no {
+        background: #f3f4f6;
+        color: var(--ink-2);
+    }
+
+    .badge-type {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--ink-2);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.3;
+    }
+
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+
+        .filter-actions {
+            width: 100%;
+            margin-left: 0;
+        }
+
+        .table {
+            font-size: 0.875rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.65rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <h1 class="page-title">Necesidades</h1>
+    </div>
+
+    <div class="filters-card">
+        <form id="f" class="filters-form">
+            <div class="filter-group">
+                <label class="filter-label" for="typeFilter">Tipo</label>
+                <select name="type" id="typeFilter" class="filter-select">
+                    <option value="">Todos los tipos</option>
+                    <option value="ECON">Económica</option>
+                    <option value="MAT">Material</option>
+                    <option value="MO">Mano de obra</option>
+                    <option value="OTRO">Otro</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="include_all" value="1">
+                    <span>Incluir todas (sin ayuda requerida y cumplidas también)</span>
+                </label>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">
+                    Buscar
+                </button>
+                <button class="btn" type="button" id="btnClear">
+                    Limpiar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="section-header">
+        <h2 class="section-title">Resultados</h2>
+        <button class="btn btn-icon" id="btnRefresh" type="button">
+            <span>↻</span>
+            <span>Refrescar</span>
+        </button>
+    </div>
+
+    <div id="err" class="alert alert-err" style="display:none"></div>
+
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Proyecto</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Monto/Cant.</th>
+                <th>Ayuda</th>
+                <th>Cumplida</th>
+            </tr>
+            </thead>
+            <tbody id="rows">
+            <tr><td colspan="7" class="muted center">Cargando…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const rowsEl = document.getElementById('rows');
+    const errEl  = document.getElementById('err');
+    const formEl = document.getElementById('f');
+    const loginOnceKey = 'needs_login_redirect_done';
+
+    async function loadNeeds() {
+        errEl.style.display = 'none';
+        rowsEl.innerHTML = `<tr><td colspan="7" class="muted center">Cargando…</td></tr>`;
+
+        // Construir URL con parámetros del formulario
+        const formData = new FormData(formEl);
+        const params = new URLSearchParams();
+
+        const type = formData.get('type');
+        const includeAll = formData.get('include_all');
+
+        if (type) {
+            params.append('type', type);
+        }
+        if (includeAll) {
+            params.append('include_all', '1');
+        }
+
+        // Pedimos JSON en la MISMA URL de la página
+        params.append('format', 'json');
+        const url = location.pathname + "?" + params.toString();
+
+        let r;
+        try {
+            r = await fetch(url, { credentials: 'same-origin' });
+        } catch (e) {
+            showError('No se pudo contactar con el servidor.');
+            return;
+        }
+
+        if (r.status === 401) {
+            if (!sessionStorage.getItem(loginOnceKey)) {
+                sessionStorage.setItem(loginOnceKey, '1');
+                window.location.href = `/auth/login/?next=${encodeURIComponent(location.pathname + location.search)}`;
+            } else {
+                showError('Sesión expirada. Volvé a iniciar sesión.');
+            }
+            return;
+        }
+
+        const ctype = r.headers.get('content-type') || '';
+        if (!ctype.includes('application/json')) {
+            showError('Respuesta inesperada del servidor.');
+            return;
+        }
+
+        const data = await r.json();
+        if (!r.ok) {
+            showError((data && (data.detail || data.message)) || 'Error al cargar.');
+            return;
+        }
+
+        sessionStorage.removeItem(loginOnceKey);
+
+        if (!data.length) {
+            rowsEl.innerHTML = `
+    <tr>
+      <td colspan="7">
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <div>No se encontraron necesidades con los filtros seleccionados</div>
+        </div>
+      </td>
+    </tr>`;
+            return;
+        }
+
+        const typeLabels = {
+            'ECON': 'Económica',
+            'MAT': 'Material',
+            'MO': 'Mano de obra',
+            'OTRO': 'Otro'
+        };
+
+        rowsEl.innerHTML = data.map(n => `
+  <tr>
+    <td>${n.project_name ?? n.project_id ?? ''}</td>
+    <td><span class="badge badge-type">${typeLabels[n.type] || n.type}</span></td>
+    <td>${n.description ?? ''}</td>
+    <td>${n.amount ?? ''}</td>
+    <td><span class="badge ${n.needs_help ? 'badge-yes' : 'badge-no'}">${n.needs_help ? 'Sí' : 'No'}</span></td>
+    <td><span class="badge ${n.is_fulfilled ? 'badge-yes' : 'badge-no'}">${n.is_fulfilled ? 'Sí' : 'No'}</span></td>
+  </tr>
+`).join('');
+    }
+
+    function showError(msg) {
+        rowsEl.innerHTML = '';
+        errEl.textContent = msg;
+        errEl.style.display = 'block';
+    }
+
+    formEl.addEventListener('submit', (e) => {
+        e.preventDefault();
+        loadNeeds();
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', loadNeeds);
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+        formEl.reset();
+        loadNeeds();
+    });
+
+    loadNeeds();
+</script>
+{% endblock %}
