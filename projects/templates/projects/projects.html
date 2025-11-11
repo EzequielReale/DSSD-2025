@@ -147,10 +147,10 @@
 <div class="card">
     <div class="page-header">
         <h2>Proyectos</h2>
-        <button class="btn btn-icon" id="btnRefresh" type="button">
+        <a class="btn btn-icon" href="{% url 'projects:projects_list' %}">
             <span>↻</span>
             <span>Refrescar</span>
-        </button>
+        </a>
     </div>
 
     <div id="err" class="alert alert-err" style="display:none"></div>
@@ -162,92 +162,31 @@
                 <th>Nombre</th>
                 <th>Inicio</th>
                 <th>Fin</th>
-                <th>Total</th>
-                <th>Abiertas</th>
-                <th>Cumplidas</th>
-                <th>Necesidades</th>
-                <th></th>
-            </tr>
+                <th></th> </tr>
             </thead>
             <tbody id="rows">
-            <tr><td colspan="8" class="muted center">Cargando…</td></tr>
+                {% for p in projects %}
+                <tr>
+                    <td><a href="{% url 'projects:project_detail' p.id %}">{{ p.name|default:"" }}</a></td>
+                    <td>{{ p.start_date|date:"Y-m-d" }}</td>
+                    <td>{{ p.end_date|date:"Y-m-d" }}</td>
+                    <td>
+                        <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div>No hay proyectos todavía</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
 
-<script>
-    const rows = document.getElementById('rows');
-    const err  = document.getElementById('err');
-
-    const detailBase = "{% url 'projects:project_detail' 0 %}";
-    function detailHref(id){
-        return detailBase.replace('0/', String(id) + '/');
-    }
-
-    async function loadProjects(){
-        err.style.display = 'none';
-        rows.innerHTML = `<tr><td colspan="8" class="muted center">Cargando…</td></tr>`;
-
-        let r;
-        try {
-            // MISMA URL con ?format=json
-            r = await fetch(location.pathname + "?format=json", { credentials: 'same-origin' });
-        } catch(e) {
-            return showError('No se pudo contactar con el servidor.');
-        }
-
-        if (r.status === 401) {
-            const next = encodeURIComponent(location.pathname + location.search);
-            location.href = `/auth/login/?next=${next}`;
-            return;
-        }
-
-        const ctype = r.headers.get('content-type') || '';
-        if (!ctype.includes('application/json')) {
-            return showError('Respuesta inesperada del servidor.');
-        }
-
-        const data = await r.json();
-        if (!r.ok) return showError(data?.detail || 'Error al cargar.');
-
-        if (!data.length) {
-            rows.innerHTML = `
-    <tr>
-      <td colspan="8">
-        <div class="empty-state">
-          <div class="empty-state-icon">📋</div>
-          <div>No hay proyectos todavía</div>
-        </div>
-      </td>
-    </tr>`;
-            return;
-        }
-
-        rows.innerHTML = data.map(p => {
-            const href = detailHref(p.id);
-            return `
-    <tr>
-      <td><a href="${href}">${p.name ?? ''}</a></td>
-      <td>${p.start_date ?? ''}</td>
-      <td>${p.end_date ?? ''}</td>
-      <td><span class="badge badge-total">${p.needs_total ?? 0}</span></td>
-      <td><span class="badge badge-open">${p.needs_open ?? 0}</span></td>
-      <td><span class="badge badge-fulfilled">${p.needs_fulfilled ?? 0}</span></td>
-      <td>
-        <a class="btn" href="${href}">Ver</a>
-      </td>
-    </tr>`;
-        }).join('');
-    }
-
-    function showError(msg){
-        rows.innerHTML = '';
-        err.textContent = msg;
-        err.style.display = 'block';
-    }
-
-    document.getElementById('btnRefresh').addEventListener('click', loadProjects);
-    loadProjects();
-</script>
 {% endblock %}
