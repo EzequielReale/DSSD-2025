@@ -173,6 +173,24 @@
         background: #dbeafe;
         color: #1e40af;
     }
+    
+    .badge-ok {
+        background: #d1fae5;
+        border-color: #86efac;
+        color: #065f46;
+    }
+
+    .badge-warn {
+        background: #fef3c7;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+
+    .badge-pending {
+        background: #e0e7ff;
+        border-color: #c7d2fe;
+        color: #3730a3;
+    }
 
     .empty-state {
         text-align: center;
@@ -201,14 +219,6 @@
             margin-left: 0;
         }
 
-        .table {
-            font-size: 0.875rem;
-        }
-
-        .table th,
-        .table td {
-            padding: 0.65rem 0.5rem;
-        }
     }
 </style>
 {% endblock %}
@@ -219,22 +229,25 @@
         <h1 class="page-title">Necesidades</h1>
     </div>
 
+    <!-- El formulario ahora usa GET y recarga la página -->
     <div class="filters-card">
-        <form id="f" class="filters-form">
+        <form id="f" class="filters-form" method="get" action="">
             <div class="filter-group">
                 <label class="filter-label" for="typeFilter">Tipo</label>
+                <!-- Usamos 'filters.type' para pre-seleccionar el valor del filtro -->
                 <select name="type" id="typeFilter" class="filter-select">
-                    <option value="">Todos los tipos</option>
-                    <option value="ECON">Económica</option>
-                    <option value="MAT">Material</option>
-                    <option value="MO">Mano de obra</option>
-                    <option value="OTRO">Otro</option>
+                    <option value="" {% if not filters.type %}selected{% endif %}>Todos los tipos</option>
+                    <option value="ECON" {% if filters.type == 'ECON' %}selected{% endif %}>Económica</option>
+                    <option value="MAT" {% if filters.type == 'MAT' %}selected{% endif %}>Material</option>
+                    <option value="MO" {% if filters.type == 'MO' %}selected{% endif %}>Mano de obra</option>
+                    <option value="OTRO" {% if filters.type == 'OTRO' %}selected{% endif %}>Otro</option>
                 </select>
             </div>
 
             <div class="filter-group">
                 <label class="checkbox-label">
-                    <input type="checkbox" name="include_all" value="1">
+                    <!-- Usamos 'filters.include_all' para marcar el checkbox -->
+                    <input type="checkbox" name="include_all" value="1" {% if filters.include_all %}checked{% endif %}>
                     <span>Incluir todas (sin ayuda requerida y cumplidas también)</span>
                 </label>
             </div>
@@ -243,22 +256,29 @@
                 <button class="btn btn-primary" type="submit">
                     Buscar
                 </button>
-                <button class="btn" type="button" id="btnClear">
+                <!-- Este botón ahora es un link que resetea los filtros -->
+                <a class="btn" href="{% url 'projects:needs' %}">
                     Limpiar
-                </button>
+                </a>
             </div>
         </form>
     </div>
 
     <div class="section-header">
         <h2 class="section-title">Resultados</h2>
-        <button class="btn btn-icon" id="btnRefresh" type="button">
+        <a class="btn btn-icon" href="{{ request.get_full_path }}">
             <span>↻</span>
             <span>Refrescar</span>
-        </button>
+        </a>
     </div>
 
-    <div id="err" class="alert alert-err" style="display:none"></div>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
 
     <div class="table-wrapper">
         <table class="table">
@@ -268,127 +288,45 @@
                 <th>Tipo</th>
                 <th>Descripción</th>
                 <th>Monto/Cant.</th>
-                <th>Ayuda</th>
-                <th>Cumplida</th>
+                <th>Estado</th>
             </tr>
             </thead>
             <tbody id="rows">
-            <tr><td colspan="7" class="muted center">Cargando…</td></tr>
+                <!-- Renderizamos los datos pasados desde la vista -->
+                {% for n in needs_list %}
+                <tr>
+                    <td>
+                        <a href="{% url 'projects:project_detail' n.project.id %}">
+                            {{ n.project.name|default:"" }}
+                        </a>
+                    </td>
+                    <td><span class="badge badge-type">{{ n.get_request_type_display }}</span></td>
+                    <td>{{ n.description|default:"" }}</td>
+                    <td>{{ n.target_qty|default:"" }}</td>
+                    <td>
+                        {% if n.status == "COMPLETED" %}
+                            <span class="badge badge-ok">✓ Cumplida</span>
+                        {% elif n.status == "RESERVED" %}
+                            <span class="badge badge-warn">⚠ Reservada</span>
+                        {% else %}
+                            <span class="badge badge-pending">○ Pendiente</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <!-- Mostramos el estado vacío si no hay datos -->
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔍</div>
+                            <div>No se encontraron necesidades con los filtros seleccionados</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
 
-<script>
-    const rowsEl = document.getElementById('rows');
-    const errEl  = document.getElementById('err');
-    const formEl = document.getElementById('f');
-    const loginOnceKey = 'needs_login_redirect_done';
-
-    async function loadNeeds() {
-        errEl.style.display = 'none';
-        rowsEl.innerHTML = `<tr><td colspan="7" class="muted center">Cargando…</td></tr>`;
-
-        // Construir URL con parámetros del formulario
-        const formData = new FormData(formEl);
-        const params = new URLSearchParams();
-
-        const type = formData.get('type');
-        const includeAll = formData.get('include_all');
-
-        if (type) {
-            params.append('type', type);
-        }
-        if (includeAll) {
-            params.append('include_all', '1');
-        }
-
-        // Pedimos JSON en la MISMA URL de la página
-        params.append('format', 'json');
-        const url = location.pathname + "?" + params.toString();
-
-        let r;
-        try {
-            r = await fetch(url, { credentials: 'same-origin' });
-        } catch (e) {
-            showError('No se pudo contactar con el servidor.');
-            return;
-        }
-
-        if (r.status === 401) {
-            if (!sessionStorage.getItem(loginOnceKey)) {
-                sessionStorage.setItem(loginOnceKey, '1');
-                window.location.href = `/auth/login/?next=${encodeURIComponent(location.pathname + location.search)}`;
-            } else {
-                showError('Sesión expirada. Volvé a iniciar sesión.');
-            }
-            return;
-        }
-
-        const ctype = r.headers.get('content-type') || '';
-        if (!ctype.includes('application/json')) {
-            showError('Respuesta inesperada del servidor.');
-            return;
-        }
-
-        const data = await r.json();
-        if (!r.ok) {
-            showError((data && (data.detail || data.message)) || 'Error al cargar.');
-            return;
-        }
-
-        sessionStorage.removeItem(loginOnceKey);
-
-        if (!data.length) {
-            rowsEl.innerHTML = `
-    <tr>
-      <td colspan="7">
-        <div class="empty-state">
-          <div class="empty-state-icon">🔍</div>
-          <div>No se encontraron necesidades con los filtros seleccionados</div>
-        </div>
-      </td>
-    </tr>`;
-            return;
-        }
-
-        const typeLabels = {
-            'ECON': 'Económica',
-            'MAT': 'Material',
-            'MO': 'Mano de obra',
-            'OTRO': 'Otro'
-        };
-
-        rowsEl.innerHTML = data.map(n => `
-  <tr>
-    <td>${n.project_name ?? n.project_id ?? ''}</td>
-    <td><span class="badge badge-type">${typeLabels[n.type] || n.type}</span></td>
-    <td>${n.description ?? ''}</td>
-    <td>${n.amount ?? ''}</td>
-    <td><span class="badge ${n.needs_help ? 'badge-yes' : 'badge-no'}">${n.needs_help ? 'Sí' : 'No'}</span></td>
-    <td><span class="badge ${n.is_fulfilled ? 'badge-yes' : 'badge-no'}">${n.is_fulfilled ? 'Sí' : 'No'}</span></td>
-  </tr>
-`).join('');
-    }
-
-    function showError(msg) {
-        rowsEl.innerHTML = '';
-        errEl.textContent = msg;
-        errEl.style.display = 'block';
-    }
-
-    formEl.addEventListener('submit', (e) => {
-        e.preventDefault();
-        loadNeeds();
-    });
-
-    document.getElementById('btnRefresh').addEventListener('click', loadNeeds);
-
-    document.getElementById('btnClear').addEventListener('click', () => {
-        formEl.reset();
-        loadNeeds();
-    });
-
-    loadNeeds();
-</script>
 {% endblock %}

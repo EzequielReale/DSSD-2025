@@ -12,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils.dateformat import format as dfmt
+from django.contrib.auth.decorators import user_passes_test
 
 from .forms import ProjectModelForm, NeedItemForm, StageForm, ObservationForm
 from .models import Project, CollaborationRequest, Stage, Observation, RequestStatus
@@ -24,7 +25,26 @@ def _wants_json(request):
             or "application/json" in (request.headers.get("Accept") or "")
     )
 
+def is_ong_solicitante(user):
+    """Verifica si el usuario está en el grupo 'ONG solicitante'"""
+    if user.is_authenticated:
+        return user.groups.filter(name='ONG solicitante').exists()
+    return False
+
+def is_ong_colaboradora(user):
+    """Verifica si el usuario está en el grupo 'ONGs colaboradoras'"""
+    if user.is_authenticated:
+        return user.groups.filter(name='ONGs colaboradoras').exists()
+    return False
+
+def is_consejo_directivo(user):
+    """Verifica si el usuario está en el grupo 'Consejo Directivo'"""
+    if user.is_authenticated:
+        return user.groups.filter(name='Consejo Directivo').exists()
+    return False
+
 @login_required
+@user_passes_test(is_ong_solicitante)
 @require_http_methods(["GET", "POST"])
 def project_create(request):
     NeedFormSet = formset_factory(
@@ -81,6 +101,7 @@ def project_create(request):
         with transaction.atomic():
             project = form.save(commit=False)
             project.created_by_ong = form.cleaned_data.get("created_by_ong") or "ONG Demo"
+            project.created_by_user = request.user
             project.save()
 
             for n_data in necesidades:
@@ -146,6 +167,7 @@ def project_create(request):
 
 
 @login_required
+@user_passes_test(is_ong_solicitante)
 def project_success(request):
     data = request.session.get("submitted")
     if not data:
@@ -165,11 +187,11 @@ def project_success(request):
     }
     return render(request, "projects/project_success.html", context)
 
-
 @login_required
 def projects(request):
     """
-    Devuelve la lista de proyectos
+    /projects/?format=json → JSON con lista de proyectos
+    /projects/ → HTML con lista de proyectos
     """
     if _wants_json(request):
         return JsonResponse({"error": "Endpoint JSON obsoleto"}, status=400)
@@ -180,26 +202,33 @@ def projects(request):
         "projects": projects_list
     })
 
-
+@login_required
+@user_passes_test(is_ong_colaboradora)
 @login_required
 def needs(request):
     """
     /needs/?format=json[&type=ECON|MAT|MO|OTRO][&include_all=1] → JSON de necesidades
+    /needs/?[&type=ECON|MAT|MO|OTRO][&include_all=1] → HTML con necesidades
     """
-    if _wants_json(request):
+    
+    f_type = request.GET.get('type')
+    f_include_all = request.GET.get('include_all') in ('1', 'true', 'True')
+
+    try:
+        q = CollaborationRequest.objects.select_related('project')
         
-        t = request.GET.get('type')
-        include_all = request.GET.get('include_all') in ('1', 'true', 'True')
+        if f_type:
+            q = q.filter(request_type=f_type)
+        
+        if not f_include_all:
+            q = q.filter(status=RequestStatus.OPEN)
 
+    except Exception as e:
+        messages.error(request, f"Error al consultar la base de datos: {e}")
+        q = CollaborationRequest.objects.none()
+
+    if _wants_json(request):
         try:
-            q = CollaborationRequest.objects.select_related('project')
-            
-            if t:
-                q = q.filter(request_type=t)
-            
-            if not include_all:
-                q = q.filter(status=RequestStatus.OPEN)
-
             response_data = []
             for item in q:
                 response_data.append({
@@ -208,16 +237,24 @@ def needs(request):
                     "type": item.request_type,
                     "description": item.description,
                     "amount": float(item.target_qty),
-                    "needs_help": bool(item.needs_help),
+                    "needs_help": True, # Asumimos, o agregamos el campo al modelo
                     "is_fulfilled": item.status == RequestStatus.COMPLETED,
                 })
-
             return JsonResponse(response_data, safe=False)
-        
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-    return render(request, "projects/needs.html")
+    
+    # Para mantener los valores de los filtros en el formulario
+    filter_values = {
+        'type': f_type,
+        'include_all': f_include_all,
+    }
+    
+    return render(request, "projects/needs.html", {
+        "needs_list": q,
+        "filters": filter_values
+    })
 
 
 @login_required
@@ -228,15 +265,15 @@ def project_detail(request, project_id: int):
     """
     project = get_object_or_404(Project, pk=project_id)
     
+    include_all = request.GET.get("all") in ("1", "true", "True")
+    
+    q_needs = project.requests.all()
+    if not include_all:
+        q_needs = q_needs.filter(status=RequestStatus.OPEN)
+
+    # --- RESPUESTA JSON (Sin cambios) ---
     if _wants_json(request):        
-        include_all = request.GET.get("include_all") in ("1", "true", "True")
-        
-        q_needs = project.requests.all()
-        if not include_all:
-            q_needs = q_needs.filter(status=RequestStatus.OPEN)
-
         def fmt(d): return dfmt(d, "Y-m-d") if d else ""
-
         payload = {
             "id": project.id,
             "name": project.name,
@@ -248,7 +285,7 @@ def project_detail(request, project_id: int):
                 "description": n.description,
                 "amount": float(n.target_qty),
                 "is_fulfilled": n.status == RequestStatus.COMPLETED,
-                "needs_help": bool(n.needs_help),
+                "needs_help": True, # Asumimos, o agregamos el campo al modelo
             } for n in q_needs]
         }
         return JsonResponse(payload, safe=False)
@@ -267,12 +304,15 @@ def project_detail(request, project_id: int):
         "stages": stages or [],
         "observations": observations or [],
         "stage_form": StageForm(), 
-        "observation_form": ObservationForm(), 
+        "observation_form": ObservationForm(),
+        "needs_list": q_needs, # Pasamos la lista de necesidades
+        "include_all_needs": include_all, # Para el link de "ver todas/solo abiertas"
     }
     return render(request, "projects/project_detail.html", context)
 
 
 @login_required
+@user_passes_test(is_ong_solicitante)
 @require_http_methods(["POST"])
 def add_stage(request, project_id: int):
     project = get_object_or_404(Project, pk=project_id)
@@ -293,6 +333,7 @@ def add_stage(request, project_id: int):
 
 
 @login_required
+@user_passes_test(is_consejo_directivo)
 @require_http_methods(["POST"])
 def add_observation(request, project_id: int):
     project = get_object_or_404(Project, pk=project_id)

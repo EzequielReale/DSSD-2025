@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Proyecto{% endblock %}
+{% block title %}Proyecto {{ project.name|default:"Cargando..." }}{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -61,6 +61,7 @@
         align-items: center;
         gap: 0.5rem;
         flex-wrap: wrap;
+        margin-top: 1rem;
     }
 
     .badge {
@@ -194,14 +195,6 @@
             grid-template-columns: 1fr;
         }
 
-        .table {
-            font-size: 0.875rem;
-        }
-
-        .table th,
-        .table td {
-            padding: 0.65rem 0.5rem;
-        }
     }
     .form-card {
         background: #f9fafb;
@@ -221,10 +214,23 @@
     <div class="card project-header">
         <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
         
-        <h2 id="pname" class="project-title">Cargando…</h2>
-        <p id="pdesc" class="project-description"></p>
+        <!-- Renderizamos los datos del proyecto directamente -->
+        <h2 id="pname" class="project-title">{{ project.name }}</h2>
+        <p id="pdesc" class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
         <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Inicio</div>
+                <div class="stat-value">{{ project.start_date|date:"Y-m-d" }}</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-label">Fin</div>
+                <div class="stat-value">{{ project.end_date|date:"Y-m-d" }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Caso Bonita</div>
+                <div class="stat-value">{{ project.bonita_case_id|default:"N/A" }}</div>
+            </div>
+        </div>
     </div>
 
     {% if messages %}
@@ -237,17 +243,59 @@
 
     <div class="card">
         <div class="section-header">
-            <h3 class="section-title">Necesidades (desde API)</h3>
+            <h3 class="section-title">Necesidades</h3>
         </div>
+        
+        <!-- Mensajes de error de la vista (si los hubiera) -->
         <div id="err" class="alert alert-err" style="display:none"></div>
+
+        <!-- Links para cambiar el filtro de necesidades -->
+        <div class="view-toggle-card">
+            {% if include_all_needs %}
+                <span class="badge badge-neutral">Mostrando Todas</span>
+                <a class="view-link" href="?">ver solo abiertas</a>
+            {% else %}
+                <span class="badge badge-neutral">Mostrando Abiertas</span>
+                <a class="view-link" href="?all=1">ver todas</a>
+            {% endif %}
+        </div>
+
         <div class="table-wrapper">
             <table class="table">
                 <thead><tr><th>Tipo</th><th>Descripción</th><th>Monto/Cant.</th><th>Estado</th></tr></thead>
-                <tbody id="rows"><tr><td colspan="4" class="muted center">Cargando…</td></tr></tbody>
+                <!-- Renderizamos la lista de necesidades pasada desde la vista -->
+                <tbody id="rows">
+                    {% for n in needs_list %}
+                    <tr>
+                        <td>{{ n.get_request_type_display }}</td>
+                        <td>{{ n.description|default:"" }}</td>
+                        <td>{{ n.target_qty|default:"" }}</td>
+                        <td>
+                            {% if n.status == "COMPLETED" %}
+                                <span class="badge badge-ok">✓ Cumplida</span>
+                            {% elif n.status == "RESERVED" %}
+                                <span class="badge badge-warn">⚠ Reservada</span>
+                            {% else %}
+                                <span class="badge badge-pending">○ Pendiente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📝</div>
+                                <div>No hay necesidades para mostrar</div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
         </div>
     </div>
 
+    <!-- Las secciones de Etapas y Observaciones ya usaban DTL, así que quedan igual -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Etapas</h3>
@@ -320,83 +368,4 @@
     </div>
 </div>
 
-<script>
-    (async () => {
-        const projectId = {{ project_id }};
-        const qs = new URLSearchParams(location.search);
-        const includeAll = qs.get('all') === '1';
-
-        // MISMA URL con ?format=json (+ include_all si corresponde)
-        const apiUrl = includeAll
-            ? (location.pathname + "?format=json&include_all=1")
-            : (location.pathname + "?format=json");
-
-        const err  = document.getElementById('err');
-        const rows = document.getElementById('rows');
-
-        try {
-            const r = await fetch(apiUrl, { credentials: 'same-origin' });
-            if (r.status === 401) {
-                const next = encodeURIComponent(location.pathname + location.search);
-                location.href = `/auth/login/?next=${next}`;
-                return;
-            }
-
-            const ctype = r.headers.get('content-type') || '';
-            if (!ctype.includes('application/json')) {
-                showError('Respuesta inesperada del servidor.');
-                return;
-            }
-
-            const data = await r.json();
-            if (!r.ok) {
-                showError(data?.detail || 'Error al cargar.');
-                return;
-            }
-
-            document.getElementById('pname').textContent = data.name || '(sin nombre)';
-            document.getElementById('pdesc').textContent = ("Descripción: " + (data.description || '')) || '(sin descripción)';
-            document.getElementById('pstart').textContent = data.start_date || '—';
-            document.getElementById('pend').textContent = data.end_date || '—';
-            document.getElementById('viewToggle').innerHTML = includeAll
-                ? `<span class="badge badge-neutral">Todas</span> <a class="view-link" href="?">ver solo abiertas</a>`
-                : `<span class="badge badge-neutral">Abiertas</span> <a class="view-link" href="?all=1">ver todas</a>`;
-
-            const list = Array.isArray(data.needs) ? data.needs : [];
-            if (!list.length) {
-                rows.innerHTML = `
-      <tr>
-        <td colspan="4">
-          <div class="empty-state">
-            <div class="empty-state-icon">📝</div>
-            <div>No hay necesidades para mostrar</div>
-          </div>
-        </td>
-      </tr>`;
-                return;
-            }
-
-            rows.innerHTML = list.map(n => `
-    <tr>
-      <td>${n.type ?? ''}</td>
-      <td>${n.description ?? ''}</td>
-      <td>${n.amount ?? ''}</td>
-      <td>${
-                n.is_fulfilled ? `<span class="badge badge-ok">✓ Cumplida</span>` :
-                    n.needs_help   ? `<span class="badge badge-warn">⚠ Pide ayuda</span>` :
-                        `<span class="badge badge-pending">○ Pendiente</span>`
-            }</td>
-    </tr>
-  `).join('');
-        } catch (e) {
-            showError('No se pudo contactar con el servidor.');
-        }
-
-        function showError(msg){
-            err.textContent = msg;
-            err.style.display = 'block';
-            rows.innerHTML = `<tr><td colspan="4" class="center muted">Error al cargar.</td></tr>`;
-        }
-    })();
-</script>
 {% endblock %}

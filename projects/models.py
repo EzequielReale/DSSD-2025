@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from django.db.models import Q, F
 
@@ -33,9 +34,14 @@ class Project(models.Model):
     created_by_ong = models.CharField(max_length=200, blank=True)
     bonita_case_id = models.CharField(max_length=64, blank=True, null=True)
     
-    # Podríamos vincularlo al usuario de Django que lo crea
-    # created_by_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
+    created_by_user = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="projects"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -161,20 +167,20 @@ class Observation(models.Model):
     def __str__(self):
         return f"Observación para {self.project.name}"
 
-class User(models.Model):
-    """
-    Usuario del sistema.
-    """
+# class User(models.Model):
+#     """
+#     Usuario del sistema.
+#     """
     
-    name = models.CharField(max_length=200)
-    email = models.EmailField(unique=True)
-    password = models.CharField(max_length=128)  # Hasheada en lo posible
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+#     name = models.CharField(max_length=200)
+#     email = models.EmailField(unique=True)
+#     password = models.CharField(max_length=128)  # Hasheada en lo posible
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self): 
-        return f"{self.name} <{self.email}>"
+#     def __str__(self): 
+#         return f"{self.name} <{self.email}>"
 
-    class Meta:
-        db_table = "users"
-        ordering = ['-created_at']
+#     class Meta:
+#         db_table = "users"
+#         ordering = ['-created_at']
