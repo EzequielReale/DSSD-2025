@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="es">
 <head>
+    {% load group_tags %}
     <meta charset="utf-8">
     <title>{% block title %}ProjectPlanning{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -124,10 +125,15 @@
     <nav class="nav">
         <div style="display:flex; gap:.5rem; align-items:center;">
             <a href="{% url 'home' %}" aria-label="Inicio">Inicio</a>
-            {% if request.user.is_authenticated %}
+            {% if request.user|has_group:"ONG solicitante" %}
                 <a href="{% url 'projects:projects_list' %}">Proyectos</a>
-                <a href="{% url 'projects:needs' %}">Necesidades</a>
                 <a href="{% url 'projects:project_create' %}">Nuevo proyecto</a>
+            {% endif %}
+            {% if request.user|has_group:"ONG colaboradoras" %}
+                <a href="{% url 'projects:needs' %}">Necesidades</a>
+            {% endif %}
+            {% if request.user|has_group:"Consejo Directivo" or request.user|has_group:"Consejo Directivo" %}
+                <a href="{% url 'projects:projects_list' %}">Proyectos</a>
             {% endif %}
         </div>
 

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load group_tags %}
 {% block title %}Proyecto {{ project.name|default:"Cargando..." }}{% endblock %}
 
 {% block extra_head %}
@@ -241,6 +242,7 @@
         {% endfor %}
     {% endif %}
 
+    <!-- Sección de Necesidades -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Necesidades</h3>
@@ -263,7 +265,6 @@
         <div class="table-wrapper">
             <table class="table">
                 <thead><tr><th>Tipo</th><th>Descripción</th><th>Monto/Cant.</th><th>Estado</th></tr></thead>
-                <!-- Renderizamos la lista de necesidades pasada desde la vista -->
                 <tbody id="rows">
                     {% for n in needs_list %}
                     <tr>
@@ -295,7 +296,7 @@
         </div>
     </div>
 
-    <!-- Las secciones de Etapas y Observaciones ya usaban DTL, así que quedan igual -->
+    <!-- Sección de Etapas -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Etapas</h3>
@@ -319,7 +320,8 @@
                 </tbody>
             </table>
         </div>
-        
+
+        {% if request.user|has_group:"ONG solicitante" %}
         <div class="form-card">
             <h4>Agregar Nueva Etapa</h4>
             <form action="{% url 'projects:add_stage' project.id %}" method="post">
@@ -330,41 +332,85 @@
                 </div>
             </form>
         </div>
+        {% endif %}
     </div>
 
+    <!-- Sección de Observaciones -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Observaciones del Consejo</h3>
         </div>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Observador</th><th>Observación</th><th>Fecha</th></tr></thead>
+                <thead>
+                <tr>
+                    <th>Observador</th>
+                    <th>Observación</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    {% if request.user|has_group:"ONG solicitante" %}
+                        <th></th>
+                    {% endif %}
+                </tr>
+                </thead>
                 <tbody>
-                    {% for obs in observations %}
+                {% for obs in observations %}
                     <tr>
                         <td>{{ obs.observer_label }}</td>
                         <td>{{ obs.text }}</td>
                         <td>{{ obs.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if obs.is_resolved %}
+                                <span class="badge badge-ok">Resuelta</span>
+                            {% else %}
+                                <span class="badge badge-pending">Pendiente</span>
+                            {% endif %}
+                        </td>
+                        {% if request.user|has_group:"ONG solicitante" %}
+                            <td>
+                                {% if not obs.is_resolved %}
+                                    <form action="{% url 'projects:observation_resolve' obs.id %}"
+                                          method="post">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn btn-ghost"
+                                                style="font-size:.85rem;padding:.3rem .6rem;">
+                                            Marcar resuelta
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
-                    <tr><td colspan="3">
+                    <tr><td colspan="5">
                         <div class="empty-state">No hay observaciones.</div>
                     </td></tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         </div>
-        
-        <div class="form-card">
-            <h4>Cargar Observación</h4>
-            <form action="{% url 'projects:add_observation' project.id %}" method="post">
-                {% csrf_token %}
-                {{ observation_form.as_p }}
-                <div class="actions">
-                    <button type="submit" class="btn btn-primary">Guardar Observación</button>
-                </div>
-            </form>
-        </div>
+
+        {% if request.user|has_group:"Consejo Directivo" %}
+            <div class="form-card">
+                <h4>Cargar Observación</h4>
+
+                <form action="{% url 'projects:add_observation' project.id %}" method="post">
+                    {% csrf_token %}
+
+                    <p><strong>Observador:</strong> Consejo Directivo</p>
+
+                    <div class="form-group">
+                        {{ observation_form.text.label_tag }}
+                        {{ observation_form.text }}
+                    </div>
+
+                    <div class="actions">
+                        <button type="submit" class="btn btn-primary">Guardar Observación</button>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
     </div>
 </div>
 

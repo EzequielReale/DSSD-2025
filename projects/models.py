@@ -159,7 +159,10 @@ class Observation(models.Model):
     
     observer_label = models.CharField(max_length=150, help_text="Nombre del Consejo o supervisor")
     text = models.TextField(help_text="Descripción de la observación o mejora")
-    
+
+    is_resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -172,14 +175,14 @@ class Observation(models.Model):
 #     """
 #     Usuario del sistema.
 #     """
-    
+
 #     name = models.CharField(max_length=200)
 #     email = models.EmailField(unique=True)
 #     password = models.CharField(max_length=128)  # Hasheada en lo posible
 #     created_at = models.DateTimeField(auto_now_add=True)
 #     updated_at = models.DateTimeField(auto_now=True)
 
-#     def __str__(self): 
+#     def __str__(self):
 #         return f"{self.name} <{self.email}>"
 
 #     class Meta:

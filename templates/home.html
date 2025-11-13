@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load group_tags %}
 {% block title %}Inicio{% endblock %}
 
 {% block content %}
@@ -93,7 +94,7 @@
         </div>
     </section>
 
-    {% if request.user.is_authenticated %}
+    {% if request.user|has_group:"ONG solicitante" %}
     <section class="card center">
         <h2 style="margin:.25rem 0;">¿Listo para empezar?</h2>
         <p class="muted" style="margin:0 0 .5rem 0">Creá tu primer proyecto ahora.</p>
