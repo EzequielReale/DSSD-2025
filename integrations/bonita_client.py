@@ -11,14 +11,13 @@ class BonitaClient:
       - eliminar en caso de error con la BD
     """
 
-    def __init__(self):
+    def __init__(self, role: str = "SOLICITANTE"):
         self.base = settings.BONITA_URL.rstrip("/")
-        self.user = settings.BONITA_USER
+        self.user = settings.BONITA_USERS.get(role, settings.BONITA_USER_SOLICITANTE)
         self.password = settings.BONITA_PASS
         self.s = requests.Session()
         self.csrf = None
 
-    # ---------- auth ----------
     def _ensure_csrf(self):
         if self.csrf:
             return
@@ -38,7 +37,6 @@ class BonitaClient:
     def _h_json(self):
         return {"X-Bonita-API-Token": self.csrf, "Content-Type": "application/json"}
 
-    # ---------- procesos ----------
     def get_process_id(self, name: str, version: str) -> str:
         self._ensure_csrf()
         r = self.s.get(
@@ -67,7 +65,6 @@ class BonitaClient:
         r.raise_for_status()
         return r.json()
 
-    # ---------- variables de caso ----------
     def set_case_var(self, case_id, name, value, type_hint: str | None = None):
         """Setea una variable de caso ya definida en el proceso."""
         self._ensure_csrf()
@@ -81,7 +78,6 @@ class BonitaClient:
         r.raise_for_status()
         return True
 
-    # ---------- user/tasks ----------
     def get_session_user_id(self) -> str:
         """
         Intenta /API/system/session; si falla (500, etc.), busca por username:

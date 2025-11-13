@@ -75,6 +75,7 @@ class CollaborationRequest(models.Model):
         max_length=12, choices=RequestStatus.choices,
         default=RequestStatus.OPEN, db_index=True
     )
+    needs_help = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

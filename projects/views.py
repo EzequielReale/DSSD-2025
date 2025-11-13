@@ -12,12 +12,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils.dateformat import format as dfmt
-from django.contrib.auth.decorators import user_passes_test
+from ProjectPlanning.decorators import require_user_passes_test
 
 from .forms import ProjectModelForm, NeedItemForm, StageForm, ObservationForm
 from .models import Project, CollaborationRequest, Stage, Observation, RequestStatus
 from integrations.bonita_client import BonitaClient
 
+client_solicitante = BonitaClient(role="SOLICITANTE")
+client_colaboradora = BonitaClient(role="COLABORADORA")
+client_directivo = BonitaClient(role="DIRECTIVO")
 
 def _wants_json(request):
     return (
@@ -43,8 +46,7 @@ def is_consejo_directivo(user):
         return user.groups.filter(name='Consejo Directivo').exists()
     return False
 
-@login_required
-@user_passes_test(is_ong_solicitante)
+@require_user_passes_test(is_ong_solicitante)
 @require_http_methods(["GET", "POST"])
 def project_create(request):
     NeedFormSet = formset_factory(
@@ -107,15 +109,14 @@ def project_create(request):
             for n_data in necesidades:
                 CollaborationRequest.objects.create(
                     project=project,
-                    title=n_data.get("detalle", "Sin título")[:200], # Usar max_length del modelo
+                    title=n_data.get("detalle", "Sin título")[:200],
                     description=n_data.get("detalle"),
                     request_type=n_data.get("tipo"),
                     target_qty=n_data.get("cantidad", 0),
-                    # El status por defecto es OPEN
+                    needs_help=n_data.get("ayuda", False)
                 )
 
-            # --- Interacción con Bonita BPM ---
-            client = BonitaClient()
+            client = client_solicitante
             process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
                 settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
             )
@@ -165,25 +166,23 @@ def project_create(request):
     request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
     return redirect("projects:project_success")
 
-
-@login_required
-@user_passes_test(is_ong_solicitante)
+@require_user_passes_test(is_ong_solicitante)
 def project_success(request):
     data = request.session.get("submitted")
     if not data:
         return redirect("projects:project_create")
 
-    project = Project.objects.filter(pk=data.get("project_id")).first()    
-    
+    project = Project.objects.filter(pk=data.get("project_id")).first()
+
     if not project:
         return redirect("projects:project_create")
-    
+
     needs = project.requests.all()
 
     context = {
-        "project": project, 
+        "project": project,
         "bonita_error": data.get("bonita_error"),
-        "needs": needs # Pasamos las necesidades locales
+        "needs": needs
     }
     return render(request, "projects/project_success.html", context)
 
@@ -202,9 +201,7 @@ def projects(request):
         "projects": projects_list
     })
 
-@login_required
-@user_passes_test(is_ong_colaboradora)
-@login_required
+@require_user_passes_test(is_ong_colaboradora)
 def needs(request):
     """
     /needs/?format=json[&type=ECON|MAT|MO|OTRO][&include_all=1] → JSON de necesidades
@@ -215,7 +212,7 @@ def needs(request):
     f_include_all = request.GET.get('include_all') in ('1', 'true', 'True')
 
     try:
-        q = CollaborationRequest.objects.select_related('project')
+        q = CollaborationRequest.objects.select_related('project').filter(needs_help=True)
         
         if f_type:
             q = q.filter(request_type=f_type)
@@ -237,15 +234,13 @@ def needs(request):
                     "type": item.request_type,
                     "description": item.description,
                     "amount": float(item.target_qty),
-                    "needs_help": True, # Asumimos, o agregamos el campo al modelo
+                    "needs_help": item.needs_help,
                     "is_fulfilled": item.status == RequestStatus.COMPLETED,
                 })
             return JsonResponse(response_data, safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-    
-    # Para mantener los valores de los filtros en el formulario
     filter_values = {
         'type': f_type,
         'include_all': f_include_all,
@@ -255,7 +250,6 @@ def needs(request):
         "needs_list": q,
         "filters": filter_values
     })
-
 
 @login_required
 def project_detail(request, project_id: int):
@@ -285,7 +279,7 @@ def project_detail(request, project_id: int):
                 "description": n.description,
                 "amount": float(n.target_qty),
                 "is_fulfilled": n.status == RequestStatus.COMPLETED,
-                "needs_help": True, # Asumimos, o agregamos el campo al modelo
+                "needs_help": True,
             } for n in q_needs]
         }
         return JsonResponse(payload, safe=False)
@@ -311,8 +305,7 @@ def project_detail(request, project_id: int):
     return render(request, "projects/project_detail.html", context)
 
 
-@login_required
-@user_passes_test(is_ong_solicitante)
+@require_user_passes_test(is_ong_solicitante)
 @require_http_methods(["POST"])
 def add_stage(request, project_id: int):
     project = get_object_or_404(Project, pk=project_id)
@@ -332,8 +325,7 @@ def add_stage(request, project_id: int):
     return redirect("projects:project_detail", project_id=project_id)
 
 
-@login_required
-@user_passes_test(is_consejo_directivo)
+@require_user_passes_test(is_consejo_directivo)
 @require_http_methods(["POST"])
 def add_observation(request, project_id: int):
     project = get_object_or_404(Project, pk=project_id)
@@ -351,44 +343,3 @@ def add_observation(request, project_id: int):
         messages.error(request, "El formulario de observación contenía errores.")
 
     return redirect("projects:project_detail", project_id=project_id)
-    
-
-# @csrf_exempt
-# def notify_ongs(request):
-#     """
-#     (Sin cambios, esta vista es interna/bonita)
-#     """
-#     if request.method != "POST":
-#         return JsonResponse({"error": "Método inválido"}, status=405)
-#     # ... (resto del código sin cambios)
-#     try:
-#         data = json.loads(request.body.decode("utf-8"))
-#         project_name = data.get("projectName") or "Proyecto sin nombre"
-#         summary = data.get("summary") or "Nueva solicitud de colaboración."
-# 
-#         Notification.objects.create(
-#             title=f"Nuevo proyecto: {project_name}",
-#             message=summary
-#         )
-# 
-#         return JsonResponse({"ok": True})
-#     except Exception as e:
-#         return JsonResponse({"error": str(e)}, status=400)
-
-
-# @login_required
-# def notifications(request):
-#     """
-#     (Sin cambios, esta vista es interna)
-#     """
-#     nots = Notification.objects.order_by("-created_at")[:10]
-#     # ... (resto del código sin cambios)
-#     data = [
-#         {
-#             "title": n.title,
-#             "message": n.message,
-#             "created_at": n.created_at.strftime("%d/%m/%Y %H:%M"),
-#         }
-#         for n in nots
-#     ]
-#     return JsonResponse(data, safe=False)

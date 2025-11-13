@@ -229,12 +229,10 @@
         <h1 class="page-title">Necesidades</h1>
     </div>
 
-    <!-- El formulario ahora usa GET y recarga la página -->
     <div class="filters-card">
         <form id="f" class="filters-form" method="get" action="">
             <div class="filter-group">
                 <label class="filter-label" for="typeFilter">Tipo</label>
-                <!-- Usamos 'filters.type' para pre-seleccionar el valor del filtro -->
                 <select name="type" id="typeFilter" class="filter-select">
                     <option value="" {% if not filters.type %}selected{% endif %}>Todos los tipos</option>
                     <option value="ECON" {% if filters.type == 'ECON' %}selected{% endif %}>Económica</option>
@@ -246,9 +244,8 @@
 
             <div class="filter-group">
                 <label class="checkbox-label">
-                    <!-- Usamos 'filters.include_all' para marcar el checkbox -->
                     <input type="checkbox" name="include_all" value="1" {% if filters.include_all %}checked{% endif %}>
-                    <span>Incluir todas (sin ayuda requerida y cumplidas también)</span>
+                    <span>Incluir todas (cumplidas también)</span>
                 </label>
             </div>
 

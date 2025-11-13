@@ -10,6 +10,7 @@ if [ -n "$DB_HOST" ]; then
 fi
 
 echo "Aplicando migraciones..."
+python manage.py makemigrations
 python manage.py migrate --noinput
 
 echo "Collectstatic..."
