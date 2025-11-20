@@ -3,12 +3,8 @@ from django.conf import settings
 
 class BonitaClient:
     """
-    Cliente mínimo para:
-      - autenticar
-      - iniciar un proceso
-      - setear variables de caso (opcional)
-      - listar/asignar/ejecutar user tasks
-      - eliminar en caso de error con la BD
+    Cliente para interactuar con la API REST de Bonita BPM.
+    Maneja autenticación, instanciación y recuperación de variables.
     """
 
     def __init__(self):
@@ -22,52 +18,133 @@ class BonitaClient:
     def _ensure_csrf(self):
         if self.csrf:
             return
-        r = self.s.post(
-            f"{self.base}/loginservice",
-            data={"username": self.user, "password": self.password, "redirect": "false"},
-            timeout=15,
-        )
-        r.raise_for_status()
-        self.csrf = r.headers.get("X-Bonita-API-Token") or self.s.cookies.get("X-Bonita-API-Token")
-        if not self.csrf:
-            raise RuntimeError("No se obtuvo X-Bonita-API-Token al autenticar en Bonita.")
+        try:
+            r = self.s.post(
+                f"{self.base}/loginservice",
+                data={"username": self.user, "password": self.password, "redirect": "false"},
+                timeout=10,
+            )
+            r.raise_for_status()
+            self.csrf = r.headers.get("X-Bonita-API-Token") or self.s.cookies.get("X-Bonita-API-Token")
+        except Exception as e:
+            print(f"Error de Login en Bonita: {e}")
+            raise
 
     def _h_auth(self):
+        self._ensure_csrf()
         return {"X-Bonita-API-Token": self.csrf}
 
     def _h_json(self):
-        return {"X-Bonita-API-Token": self.csrf, "Content-Type": "application/json"}
+        h = self._h_auth()
+        h["Content-Type"] = "application/json"
+        return h
 
     # ---------- procesos ----------
-    def get_process_id(self, name: str, version: str) -> str:
-        self._ensure_csrf()
+    def get_process_id(self, name, version):
         r = self.s.get(
             f"{self.base}/API/bpm/process",
             headers=self._h_auth(),
-            params={"f": [f"name={name}", f"version={version}"], "c": "1"},
-            timeout=15,
+            params={"f": [f"name={name}", f"version={version}"], "c": 1},
+            timeout=10
         )
         r.raise_for_status()
-        items = r.json()
-        if not items:
-            raise RuntimeError(f"No se encontró el proceso '{name}' v{version}")
-        return items[0]["id"]
+        data = r.json()
+        if data:
+            return data[0]["id"]
+        return None
 
-    def start_process(self, process_id: str) -> dict:
-        self._ensure_csrf()
-        r = self.s.post(
-            f"{self.base}/API/bpm/process/{process_id}/instantiation",
-            json={}, headers=self._h_json(), timeout=20
-        )
-        if r.status_code == 400:
-            r = self.s.post(
-                f"{self.base}/API/bpm/process/{process_id}/instantiation",
-                json={"contract": {}}, headers=self._h_json(), timeout=20
-            )
+    def start_process(self, process_id, variables=None):
+        """
+        Inicia un proceso y opcionalmente setea variables iniciales si el contrato lo permite.
+        """
+        url = f"{self.base}/API/bpm/process/{process_id}/instantiation"
+        payload = {}
+        if variables:
+            # Usar la variable correcta
+            payload = variables
+
+        r = self.s.post(url, json=payload, headers=self._h_json(), timeout=15)
         r.raise_for_status()
-        return r.json()
+        return r.json()  # Devuelve { "caseId": "123" }
+
+    def start_process_with_contract(self, process_name, process_version, contract_data):
+        """
+        Busca el proceso e instancia un caso enviando datos al contrato.
+        contract_data: Diccionario con los inputs definidos en el contrato de instanciación de Bonita.
+        """
+        # A. Buscar ID del proceso
+        pid = self.get_process_id(process_name, process_version)
+        if not pid:
+            raise Exception(f"Proceso {process_name} v{process_version} no encontrado.")
+
+        # B. Instanciar
+        url = f"{self.base}/API/bpm/process/{pid}/instantiation"
+        
+        # Bonita espera el payload en formato: { "input_name": value, ... }
+        payload = contract_data or {}
+        
+        resp = self.s.post(url, json=payload, headers=self._h_json(), timeout=15)
+        resp.raise_for_status()
+        
+        return resp.json().get("caseId")
+
+    def assign_and_execute_task(self, case_id, task_name, user_id):
+        """Busca una tarea por nombre en un caso, la asigna y la ejecuta."""
+        # 1. Buscar tarea
+        r = self.s.get(
+            f"{self.base}/API/bpm/userTask",
+            headers=self._h_auth(),
+            params={"f": [f"caseId={case_id}", "state=ready"], "c": 100}
+        )
+        tasks = r.json()
+        target_task = next((t for t in tasks if t["displayName"] == task_name), None)
+        
+        if target_task:
+            # 2. Asignar
+            self.s.put(
+                f"{self.base}/API/bpm/userTask/{target_task['id']}",
+                json={"assigned_id": user_id},
+                headers=self._h_json()
+            )
+            # 3. Ejecutar
+            self.s.post(
+                f"{self.base}/API/bpm/userTask/{target_task['id']}/execution",
+                json={}, 
+                headers=self._h_json()
+            )
+            return True
+        return False
 
     # ---------- variables de caso ----------
+    def get_case_variable(self, case_id, variable_name):
+        """
+        Obtiene el valor de una variable de proceso.
+        Retorna el valor (que puede ser un dict/list si es JSON) o None.
+        """
+        # Primero intentamos buscarla como variable de caso activa
+        try:
+            url = f"{self.base}/API/bpm/caseVariable/{case_id}/{variable_name}"
+            r = self.s.get(url, headers=self._h_auth())
+            if r.status_code == 200:
+                data = r.json()
+                val = data.get("value")
+                # Si Bonita devuelve strings para JSONs, intentamos parsear
+                if data.get("type") == "java.util.List" or data.get("type") == "java.util.Map":
+                     # A veces Bonita devuelve el objeto directo, a veces string.
+                     return val
+                return val
+        except Exception:
+            pass
+            
+        # Si falla (ej. caso archivado), podríamos buscar en archivedCaseVariable
+        return self.get_archived_case_variable(case_id, variable_name)
+
+    def get_archived_case_variable(self, case_id, variable_name):
+        """Para cuando el proyecto finalizó"""
+        # La lógica de búsqueda en archivos es más compleja en Bonita (API/bpm/archivedCaseVariable),
+        # requiere buscar por sourceObjectId. Simplificamos por ahora.
+        return []
+
     def set_case_var(self, case_id, name, value, type_hint: str | None = None):
         """Setea una variable de caso ya definida en el proceso."""
         self._ensure_csrf()
@@ -130,14 +207,37 @@ class BonitaClient:
         )
         r.raise_for_status()
 
-    def execute_task(self, task_id):
-        """Completa la user task SIN contract (contract vacío)."""
-        self._ensure_csrf()
-        r = self.s.post(
-            f"{self.base}/API/bpm/userTask/{task_id}/execution",
-            json={"contract": {}}, headers=self._h_json(), timeout=20
+    def execute_task(self, case_id, task_name, user_id=None):
+        # Buscar tarea pendiente
+        resp = self.s.get(
+            f"{self.base}/API/bpm/userTask",
+            params={"f": [f"caseId={case_id}", "state=ready"], "c": 50},
+            headers=self._h_auth(),
+            timeout=15,
         )
-        r.raise_for_status()
+        resp.raise_for_status()
+        tasks = resp.json()
+        target = next((t for t in tasks if t["displayName"] == task_name), None)
+        
+        if target:
+            # Si se requiere asignar
+            if user_id:
+                self.s.put(
+                    f"{self.base}/API/bpm/userTask/{target['id']}",
+                    json={"assigned_id": user_id},
+                    headers=self._h_json(),
+                    timeout=10,
+                )
+            
+            # Ejecutar (con contrato vacío si no se requieren más datos)
+            self.s.post(
+                f"{self.base}/API/bpm/userTask/{target['id']}/execution",
+                json={},
+                headers=self._h_json(),
+                timeout=10,
+            )
+            return True
+        return False
 
     def ensure_login(self):
         self._ensure_csrf()
