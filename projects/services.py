@@ -12,7 +12,7 @@ class ProjectService:
         """
         Devuelve un dict con:
         - 'local': Objeto Project de Django
-        - 'requests': Lista de necesidades (desde Bonita)
+        - 'needs': Lista de necesidades (desde Bonita)
         - 'commitments': Lista de compromisos (desde Bonita)
         """
         try:
@@ -22,7 +22,7 @@ class ProjectService:
             
         context = {
             "local": project,
-            "requests": [],
+            "needs": [],
             "commitments": []
         }
 
@@ -34,11 +34,11 @@ class ProjectService:
         # 'solicitudes' (List/JSON) y 'compromisos' (List/JSON)
         
         requests_data = self.bonita.get_case_variable(project.bonita_case_id, "solicitudes")
-        commitments_data = self.bonita.get_case_variable(project.bonita_case_id, "compromisos")
+        # commitments_data = self.bonita.get_case_variable(project.bonita_case_id, "compromisos")
 
         # Normalizar datos (por si es None o lista vacía)
-        context["requests"] = requests_data if requests_data else []
-        context["commitments"] = commitments_data if commitments_data else []
+        context["needs"] = requests_data if requests_data else []
+        # context["commitments"] = commitments_data if commitments_data else []
         
         return context
 

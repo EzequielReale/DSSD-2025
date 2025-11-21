@@ -1,4 +1,5 @@
 import json
+import time
 from decimal import Decimal
 
 from django.conf import settings
@@ -45,73 +46,126 @@ def is_consejo_directivo(user):
         return user.groups.filter(name='Consejo Directivo').exists()
     return False
 
-@login_required
 @user_passes_test(is_ong_solicitante)
 @require_http_methods(["GET", "POST"])
 def project_create(request):
-    NeedFormSet = formset_factory(NeedItemForm, extra=0, min_num=1)
-    
-    if request.method == 'POST':
-        form = ProjectModelForm(request.POST)
-        formset = NeedFormSet(request.POST, prefix="needs")
-        
-        if form.is_valid() and formset.is_valid():
-            try:
-                # 1. Guardar Proyecto Local (Postgres)
-                project = form.save(commit=False)
-                if request.user.is_authenticated:
-                    project.created_by_user = request.user
-                project.save()
-                
-                # 2. Preparar JSON para Bonita
-                # Convertimos el formset en una lista de diccionarios pura
-                lista_solicitudes = []
-                for f in formset.cleaned_data:
-                    if f and not f.get("DELETE"):
-                        lista_solicitudes.append({
-                            "tipo": f.get("need_type"),
-                            "descripcion": f.get("need_description"),
-                            "cantidad": float(f.get("quantity")), # Bonita prefiere floats/doubles
-                            "ayuda": bool(f.get("needs_help")),
-                            "estado": "PENDIENTE"
-                        })
+    NeedFormSet = formset_factory(
+        NeedItemForm, extra=0, can_delete=True, min_num=1, validate_min=True
+    )
 
-                # 3. Iniciar Caso en Bonita con Contrato
-                # ASUMIMOS: Tu proceso tiene un contrato de instanciación con inputs:
-                # - idProyectoInput (long/integer)
-                # - solicitudesInput (List<Solicitud>)
-                
-                contract_payload = {
-                    "idProyectoInput": project.id,
-                    "solicitudesInput": lista_solicitudes 
-                }
-                
-                bonita = service.bonita # Accedemos al cliente dentro del servicio
-                case_id = bonita.start_process_with_contract(
-                    settings.BONITA_PROCESS_NAME, 
-                    settings.BONITA_PROCESS_VERSION,
-                    contract_payload
+    if request.method == "GET":
+        return render(
+            request,
+            "projects/project_form.html",
+            {
+                "form": ProjectModelForm(),
+                "formset": NeedFormSet(prefix="needs", initial=[{}]),
+                "error_msg": None,
+            },
+        )
+
+    form = ProjectModelForm(request.POST)
+    formset = NeedFormSet(request.POST, prefix="needs")
+
+    if not (form.is_valid() and formset.is_valid()):
+        return render(
+            request,
+            "projects/project_form.html",
+            {"form": form, "formset": formset, "error_msg": None},
+        )
+
+    necesidades = []
+    for f in formset.cleaned_data:
+        if not f or f.get("DELETE"):
+            continue
+        tipo = f.get("need_type")
+        cantidad = f.get("quantity")
+        necesidades.append({
+            "tipo": tipo,
+            "detalle": f.get("need_description"),
+            "cantidad": cantidad, # El modelo maneja Decimal
+            "ayuda": bool(f.get("needs_help")),
+        })
+
+    if not necesidades:
+        return render(
+            request,
+            "projects/project_form.html",
+            {"form": form, "formset": formset,
+             "error_msg": "Debe indicar al menos una necesidad."},
+        )
+
+    client = None
+    case_id = None
+    project = None
+
+    try:
+        with transaction.atomic():
+            project = form.save(commit=False)
+            project.created_by_ong = form.cleaned_data.get("created_by_ong") or "ONG Demo"
+            project.created_by_user = request.user
+            project.save()
+
+            # for n_data in necesidades:
+            #     CollaborationRequest.objects.create(
+            #         project=project,
+            #         title=n_data.get("detalle", "Sin título")[:200],
+            #         description=n_data.get("detalle"),
+            #         request_type=n_data.get("tipo"),
+            #         target_qty=n_data.get("cantidad", 0),
+            #         needs_help=n_data.get("ayuda", False)
+            #     )
+
+            client = BonitaClient()
+            process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
+                settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
+            )
+
+            inst = client.start_process(process_id)
+            case_id = (
+                    inst.get("caseId")
+                    or inst.get("processInstanceId")
+                    or inst.get("id")
+            )
+            
+            client.set_case_var(case_id, "idProyecto", int(project.id), "java.lang.Long")
+            client.set_case_var(case_id, "colaboracionesSolicitadas", len(necesidades), "java.lang.Integer")
+            tasks = client.find_ready_user_tasks(case_id)
+            if tasks:
+                task = next(
+                    (t for t in tasks if t.get("displayName") == "Crear proyecto en la app"),
+                    tasks[0],
                 )
+                uid = client.get_session_user_id()
+                client.assign_task(task["id"], uid)
+                client.execute_task(task["id"], "Crear proyecto en la app", uid)
 
-                # 4. Guardar referencia
-                project.bonita_case_id = case_id
-                project.save()
-                
-                # 5. (Opcional) Ejecutar la primera tarea humana si es automática
-                # bonita.execute_task(case_id, "Crear proyecto en la app", bonita.get_session_user_id())
+            project.bonita_case_id = case_id
+            project.save(update_fields=["bonita_case_id"])
 
-                return redirect('projects:project_success')
+    except Exception as e:
+        try:
+            if client and case_id:
+                client.abort_case(case_id)
+        except Exception:
+            pass
+        return render(
+            request,
+            "projects/project_form.html",
+            {
+                "form": form,
+                "formset": formset,
+                "error_msg": (
+                        "No se pudo completar la operación (BD/Bonita). "
+                        "Intente más tarde o contacte al administrador. " + str(e)
+                ),
+            },
+        )
 
-            except Exception as e:
-                messages.error(request, f"Error de integración: {str(e)}")
-    
-    else:
-        form = ProjectModelForm()
-        formset = NeedFormSet(prefix="needs")
-        
-    return render(request, "projects/project_form.html", {
-        "form": form, "formset": formset
-    })
+    # Éxito
+    request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
+    return redirect("projects:project_success")
+
 
 
 @login_required
@@ -139,7 +193,10 @@ def project_success(request):
 def projects(request):
     """Catálogo local. Muy rápido."""
     projects_list = Project.objects.all()
-    return render(request, "projects/projects.html", {"projects": projects_list})
+    return render(request, "projects/projects.html", {
+        "projects": projects_list,
+        "is_consejo": is_consejo_directivo(request.user),
+        })
 
 @login_required
 def project_detail(request, project_id):
@@ -147,22 +204,75 @@ def project_detail(request, project_id):
     Detalle completo.
     Usa el servicio para mezclar datos locales con datos de Bonita.
     """
-    data = service.get_full_project(project_id)
+    # 1. Usar el servicio para obtener todo el paquete de datos
+    full_project = service.get_full_project(project_id)
     
-    if not data:
-        messages.error(request, "Proyecto no encontrado")
+    if not full_project:
+        messages.error(request, "El proyecto no existe.")
         return redirect('projects:projects_list')
 
+    project = full_project['local']
+    needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
+
+    stage_form = StageForm()
+    observation_form = ObservationForm()
+
     return render(request, "projects/project_detail.html", {
-        "project": data['local'],
-        "requests": data['requests'],       # Viene de Bonita
-        "commitments": data['commitments'], # Viene de Bonita
-        "stages": data['local'].stages.all(),
-        "observations": data['local'].observations.all(),
-        # Forms para modales/acciones
-        "stage_form": StageForm(),
-        "observation_form": ObservationForm()
+        "project": project,
+        "needs_list": needs_remote,
+        "stages": project.stages.all(),
+        "observations": project.observations.all(),
+        "stage_form": stage_form,
+        "observation_form": observation_form,
+        # Permisos
+        "is_consejo": is_consejo_directivo(request.user),
+        "is_creador": (request.user == project.created_by_user)
     })
+
+@login_required
+@user_passes_test(is_consejo_directivo)
+def start_monitoring(request, project_id):
+    """
+    Inicia el proceso de Monitoreo para un proyecto específico.
+    """
+    project = get_object_or_404(Project, pk=project_id)
+    
+    # Si ya tiene uno activo, no iniciamos otro
+    if project.monitoring_case_id:
+        messages.warning(request, "Ya existe una sesión de monitoreo activa para este proyecto.")
+        return redirect('projects:project_detail', project_id=project.id)
+
+    client = BonitaClient()
+    try:
+        # Iniciamos Monitoreo y le pasamos el ID del proyecto
+        contract = {"idProyectoInput": project.id}
+        
+        case_id = client.start_process_with_contract(
+            "Monitoreo", 
+            settings.BONITA_PROCESS_VERSION,
+            contract 
+        )
+        
+        # GUARDAMOS EL ID EN LA BD
+        #project.monitoring_case_id = case_id
+        #project.save()
+
+        #time.sleep(2) # Pequeña espera para asegurar que el proceso esté listo
+
+        contract = {"idProyectoInput": project.id, "aprobadoInput": True}
+
+        client.execute_task(
+                case_id=case_id,
+                task_name="Revisión de proyectos",
+                user_id=client.get_session_user_id(),
+                contract=contract
+            )        
+        messages.success(request, "Sesión de monitoreo iniciada.")
+    except Exception as e:
+        messages.error(request, f"Error al iniciar monitoreo: {e}")
+    
+    return redirect('projects:project_detail', project_id=project.id)
+
 
 @login_required
 @user_passes_test(is_ong_colaboradora, login_url=None)
@@ -207,7 +317,16 @@ def add_observation(request, project_id: int):
         try:
             observation = form.save(commit=False)
             observation.project = project
+            observation.observer_label = f"{request.user.username}"
             observation.save()
+
+            client = service.bonita
+            client.execute_task(
+                case_id=project.bonita_case_id,
+                task_name="Enviar informe de sugerencias",
+                user_id=client.get_session_user_id(),
+            )
+
             messages.success(request, "Observación agregada correctamente.")
         except Exception as e:
             messages.error(request, f"Error al guardar la observación: {e}")

@@ -147,13 +147,12 @@
 <div class="card">
     <div class="page-header">
         <h2>Proyectos</h2>
-        <a class="btn btn-icon" href="{% url 'projects:projects_list' %}">
-            <span>↻</span>
-            <span>Refrescar</span>
-        </a>
+        <div class="actions">
+            <a class="btn btn-icon" href="{% url 'projects:projects_list' %}">
+                <span>↻</span>
+            </a>
+        </div>
     </div>
-
-    <div id="err" class="alert alert-err" style="display:none"></div>
 
     <div class="table-wrapper">
         <table class="table">
@@ -162,31 +161,33 @@
                 <th>Nombre</th>
                 <th>Inicio</th>
                 <th>Fin</th>
-                <th></th> </tr>
+                <th>Acciones</th> 
+            </tr>
             </thead>
-            <tbody id="rows">
+            <tbody>
                 {% for p in projects %}
                 <tr>
                     <td><a href="{% url 'projects:project_detail' p.id %}">{{ p.name|default:"" }}</a></td>
                     <td>{{ p.start_date|date:"Y-m-d" }}</td>
                     <td>{{ p.end_date|date:"Y-m-d" }}</td>
                     <td>
-                        <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
+                        {% if is_consejo %}
+                            {% if not p.monitoring_case_id %}
+                            <a href="{% url 'projects:start_monitoring' p.id %}" class="btn btn-sm" title="Iniciar Monitoreo">
+                                ▶ Iniciar Monitoreo
+                            </a>
+                            {% endif %}
+                        {%else%}
+                            <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
+                        {% endif %}
+                        
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="4">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📋</div>
-                            <div>No hay proyectos todavía</div>
-                        </div>
-                    </td>
-                </tr>
+                <tr><td colspan="4" class="center">No hay proyectos.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-
 {% endblock %}

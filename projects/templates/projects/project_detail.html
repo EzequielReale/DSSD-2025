@@ -214,7 +214,6 @@
     <div class="card project-header">
         <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
         
-        <!-- Renderizamos los datos del proyecto directamente -->
         <h2 id="pname" class="project-title">{{ project.name }}</h2>
         <p id="pdesc" class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
         <div class="stats-grid">
@@ -241,51 +240,54 @@
         {% endfor %}
     {% endif %}
 
+    <!-- Sección de Necesidades (Datos desde Bonita) -->
     <div class="card">
         <div class="section-header">
-            <h3 class="section-title">Necesidades</h3>
-        </div>
-        
-        <!-- Mensajes de error de la vista (si los hubiera) -->
-        <div id="err" class="alert alert-err" style="display:none"></div>
-
-        <!-- Links para cambiar el filtro de necesidades -->
-        <div class="view-toggle-card">
-            {% if include_all_needs %}
-                <span class="badge badge-neutral">Mostrando Todas</span>
-                <a class="view-link" href="?">ver solo abiertas</a>
-            {% else %}
-                <span class="badge badge-neutral">Mostrando Abiertas</span>
-                <a class="view-link" href="?all=1">ver todas</a>
-            {% endif %}
+            <h3 class="section-title">Necesidades del Proyecto</h3>
+            <span class="badge badge-neutral">Fuente: Bonita Cloud</span>
         </div>
 
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Tipo</th><th>Descripción</th><th>Monto/Cant.</th><th>Estado</th></tr></thead>
-                <!-- Renderizamos la lista de necesidades pasada desde la vista -->
-                <tbody id="rows">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Cantidad</th>
+                        <th>Ayuda Red</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {% for n in needs_list %}
                     <tr>
-                        <td>{{ n.get_request_type_display }}</td>
-                        <td>{{ n.description|default:"" }}</td>
-                        <td>{{ n.target_qty|default:"" }}</td>
+                        <!-- Accedemos como diccionario: n.tipo, n.descripcion -->
                         <td>
-                            {% if n.status == "COMPLETED" %}
-                                <span class="badge badge-ok">✓ Cumplida</span>
-                            {% elif n.status == "RESERVED" %}
-                                <span class="badge badge-warn">⚠ Reservada</span>
+                            <span class="badge badge-type">{{ n.tipo }}</span>
+                        </td>
+                        <td>{{ n.descripcion }}</td>
+                        <td>{{ n.cantidad }}</td>
+                        <td>
+                            {% if n.ayuda %}
+                                <span class="badge badge-warn">Sí</span>
                             {% else %}
-                                <span class="badge badge-pending">○ Pendiente</span>
+                                <span class="badge badge-neutral">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if n.estado == 'COMPLETADA' %}
+                                <span class="badge badge-ok">Completada</span>
+                            {% else %}
+                                <span class="badge badge-pending">Pendiente</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4">
+                        <td colspan="5">
                             <div class="empty-state">
-                                <div class="empty-state-icon">📝</div>
-                                <div>No hay necesidades para mostrar</div>
+                                <div class="empty-state-icon">📭</div>
+                                <div>No hay necesidades registradas en Bonita para este caso.</div>
                             </div>
                         </td>
                     </tr>
@@ -295,7 +297,7 @@
         </div>
     </div>
 
-    <!-- Las secciones de Etapas y Observaciones ya usaban DTL, así que quedan igual -->
+    <!-- Etapas -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Etapas</h3>
@@ -320,6 +322,7 @@
             </table>
         </div>
         
+        {% if is_creador %}
         <div class="form-card">
             <h4>Agregar Nueva Etapa</h4>
             <form action="{% url 'projects:add_stage' project.id %}" method="post">
@@ -330,8 +333,10 @@
                 </div>
             </form>
         </div>
+        {% endif %}
     </div>
 
+    <!-- Observaciones -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Observaciones del Consejo</h3>
@@ -355,6 +360,7 @@
             </table>
         </div>
         
+        {% if is_consejo %}
         <div class="form-card">
             <h4>Cargar Observación</h4>
             <form action="{% url 'projects:add_observation' project.id %}" method="post">
@@ -365,9 +371,8 @@
                 </div>
             </form>
         </div>
+        {% endif %}
     </div>
 </div>
-
-<!-- Eliminamos todo el bloque <script> -->
 
 {% endblock %}

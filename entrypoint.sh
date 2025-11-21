@@ -10,6 +10,7 @@ if [ -n "$DB_HOST" ]; then
 fi
 
 echo "Aplicando migraciones..."
+python manage.py makemigrations --noinput
 python manage.py migrate --noinput
 
 echo "Collectstatic..."
@@ -38,4 +39,6 @@ if [ "$SEED_ON_START" = "1" ]; then
 fi
 
 echo "Levantando Gunicorn..."
-exec gunicorn --workers 3 --timeout 120 --bind 0.0.0.0:${PORT:-8000} ProjectPlanning.wsgi:application
+#exec gunicorn --workers 3 --timeout 120 --bind 0.0.0.0:${PORT:-8000} ProjectPlanning.wsgi:application
+echo "Levantando servidor de desarrollo en 0.0.0.0:8000..."
+python manage.py runserver 0.0.0.0:8000

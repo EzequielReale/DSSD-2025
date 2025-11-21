@@ -69,12 +69,14 @@ class ObservationForm(forms.ModelForm):
     Formulario para agregar una observación del Consejo Directivo a un proyecto."""
     class Meta:
         model = Observation
-        fields = ['observer_label', 'text']
+        fields = ['text']
+        labels = {
+            'text': 'Observación:',
+        }
         widgets = {
-            "observer_label": forms.TextInput(attrs={"readonly": True}),
             "text": forms.Textarea(attrs={"rows": 3, "placeholder": "Escriba la observación o sugerencia"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['observer_label'].initial = "Consejo Directivo"
+        
