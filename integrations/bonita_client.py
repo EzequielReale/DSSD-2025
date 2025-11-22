@@ -1,4 +1,5 @@
 import requests
+import json
 from django.conf import settings
 
 class BonitaClient:
@@ -105,11 +106,13 @@ class BonitaClient:
             resp = self.s.get(url, headers=self._headers(), timeout=5)
             
             if resp.status_code == 404:
+                print("Me fui baiteado")
                 return self.get_archived_case_variable(case_id, var_name)
             
             if resp.status_code == 200:
                 data = resp.json()
                 val = data.get("value")
+                print("Valor bruto de la variable:", val)
                 
                 # Intento de parseo JSON robusto
                 if isinstance(val, str):
@@ -184,6 +187,38 @@ class BonitaClient:
             print(f"Error ejecutando tarea {task_name}: {e}")
             return False
     
+    def execute_task_2(self, case_id, task_name, user_id, contract):
+        try:
+            resp = self.s.get(
+                f"{self.base}/API/bpm/userTask",
+                params={"f": [f"caseId={case_id}", "state=ready"], "c": 50},
+                headers=self._headers()
+            )
+            tasks = resp.json()
+            target = next((t for t in tasks if t["displayName"] == task_name), None)
+            
+            if target:
+                tid = target['id']
+                if user_id:
+                    self.s.put(
+                        f"{self.base}/API/bpm/userTask/{tid}",
+                        json={"assigned_id": user_id},
+                        headers=self._headers()
+                    )
+                
+                payload = contract if contract else {}
+
+                self.s.post(
+                    f"{self.base}/API/bpm/userTask/{tid}/execution",
+                    json=payload,
+                    headers=self._headers()
+                )
+                return True
+            return False
+        except Exception as e:
+            print(f"Error ejecutando tarea {task_name}: {e}")
+            return False
+
     # --- SETTERS ---
     def set_case_var(self, case_id, name, value, type_hint=None):
         """Setea una variable de caso (Legacy)."""

@@ -213,6 +213,7 @@ def project_detail(request, project_id):
 
     project = full_project['local']
     needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
+    print("Necesidades remotas:", needs_remote)
 
     stage_form = StageForm()
     observation_form = ObservationForm()
@@ -242,35 +243,43 @@ def start_monitoring(request, project_id):
         messages.warning(request, "Ya existe una sesión de monitoreo activa para este proyecto.")
         return redirect('projects:project_detail', project_id=project.id)
 
-    client = BonitaClient()
+    client = service.bonita
     try:
-        # Iniciamos Monitoreo y le pasamos el ID del proyecto
-        contract = {"idProyectoInput": project.id}
-        
         case_id = client.start_process_with_contract(
             "Monitoreo", 
             settings.BONITA_PROCESS_VERSION,
-            contract 
+            {}
         )
         
         # GUARDAMOS EL ID EN LA BD
-        #project.monitoring_case_id = case_id
-        #project.save()
+        project.monitoring_case_id = case_id
+        project.save()
 
-        #time.sleep(2) # Pequeña espera para asegurar que el proceso esté listo
+        payload = {"idProyectoInput": project.id, "aprobadoInput": False}
+        max_retries = 10
+        for i in range(max_retries):
+            success = client.execute_task_2(
+                case_id,
+                "Revisión de proyectos",
+                client.get_session_user_id(),
+                payload
+            )
+            
+            if success:
+                break
+    
+            # Si no la encontró, esperamos un poco antes de volver a preguntar
+            time.sleep(0.5) 
 
-        contract = {"idProyectoInput": project.id, "aprobadoInput": True}
-
-        client.execute_task(
-                case_id=case_id,
-                task_name="Revisión de proyectos",
-                user_id=client.get_session_user_id(),
-                contract=contract
-            )        
-        messages.success(request, "Sesión de monitoreo iniciada.")
+        if success:
+            messages.success(request, "Sesión iniciada y tarea auto-completada.")
+        else:
+            messages.warning(request, "El proceso inició, pero la tarea tardó demasiado en aparecer.")
+    
     except Exception as e:
         messages.error(request, f"Error al iniciar monitoreo: {e}")
     
+    time.sleep(10)
     return redirect('projects:project_detail', project_id=project.id)
 
 

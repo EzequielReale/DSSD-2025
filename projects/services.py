@@ -33,7 +33,8 @@ class ProjectService:
         # Asumimos que en Bonita tienes variables de proceso llamadas:
         # 'solicitudes' (List/JSON) y 'compromisos' (List/JSON)
         
-        requests_data = self.bonita.get_case_variable(project.bonita_case_id, "solicitudes")
+        # Esto hay que parametrizarlo pero me chupa un huevo FUNCIONA CARAJO
+        requests_data = self.bonita.get_case_variable(project.monitoring_case_id, "solicitudes")
         # commitments_data = self.bonita.get_case_variable(project.bonita_case_id, "compromisos")
 
         # Normalizar datos (por si es None o lista vacía)

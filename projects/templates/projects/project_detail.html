@@ -252,6 +252,7 @@
                 <thead>
                     <tr>
                         <th>Tipo</th>
+                        <th>Nombre</th>
                         <th>Descripción</th>
                         <th>Cantidad</th>
                         <th>Ayuda Red</th>
@@ -263,10 +264,11 @@
                     <tr>
                         <!-- Accedemos como diccionario: n.tipo, n.descripcion -->
                         <td>
-                            <span class="badge badge-type">{{ n.tipo }}</span>
+                            <span class="badge badge-type">{{ n.request_type }}</span>
                         </td>
-                        <td>{{ n.descripcion }}</td>
-                        <td>{{ n.cantidad }}</td>
+                        <td>{{ n.title }}</td>
+                        <td>{{ n.description }}</td>
+                        <td>{{ n.target_qty }}</td>
                         <td>
                             {% if n.ayuda %}
                                 <span class="badge badge-warn">Sí</span>
@@ -275,10 +277,10 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if n.estado == 'COMPLETADA' %}
-                                <span class="badge badge-ok">Completada</span>
+                            {% if n.status == 'OPEN' %}
+                                <span class="badge badge-ok">Pendiente</span>
                             {% else %}
-                                <span class="badge badge-pending">Pendiente</span>
+                                <span class="badge badge-pending">Completada</span>
                             {% endif %}
                         </td>
                     </tr>
