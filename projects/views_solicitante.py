@@ -1,4 +1,5 @@
 import json
+import time
 from decimal import Decimal
 
 from django.conf import settings
@@ -13,12 +14,13 @@ from django.utils import timezone
 
 from ProjectPlanning.decorators import require_user_passes_test
 
-from .forms import ProjectModelForm, NeedItemForm, StageForm, ObservationForm
-from .models import Project, CollaborationRequest, Observation, RequestStatus
+from .forms import ProjectModelForm, NeedItemForm, StageForm
+from .models import Project, CollaborationRequest, Observation
 from integrations.bonita_client import BonitaClient
 from .views import is_ong_solicitante
+from .services import ProjectService
 
-client_solicitante = BonitaClient(role="SOLICITANTE")
+service = ProjectService()
 
 
 @require_user_passes_test(is_ong_solicitante)
@@ -56,12 +58,10 @@ def project_create(request):
     for f in formset.cleaned_data:
         if not f or f.get("DELETE"):
             continue
-        tipo = f.get("need_type")
-        cantidad = f.get("quantity")
         necesidades.append({
-            "tipo": tipo,
+            "tipo": f.get("need_type"),
             "detalle": f.get("need_description"),
-            "cantidad": cantidad,  # El modelo maneja Decimal
+            "cantidad": f.get("quantity"),
             "ayuda": bool(f.get("needs_help")),
         })
 
@@ -82,6 +82,7 @@ def project_create(request):
 
     try:
         with transaction.atomic():
+            client = BonitaClient(role="SOLICITANTE")
             project = form.save(commit=False)
             project.created_by_ong = form.cleaned_data.get("created_by_ong") or "ONG Demo"
             project.created_by_user = request.user
@@ -97,36 +98,43 @@ def project_create(request):
                     needs_help=n_data.get("ayuda", False),
                 )
 
-            # --- Interacción con Bonita BPM ---
-            client = client_solicitante
-            process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
-                settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
-            )
+            needs_with_help = []
+            for n_data in necesidades:
+                if not n_data.get("ayuda"):
+                    continue
+                needs_with_help.append({
+                    "title": (n_data.get("detalle") or "Sin título")[:200],
+                    "description": n_data.get("detalle"),
+                    "request_type": n_data.get("tipo"),
+                    "target_qty": str(n_data.get("cantidad") or "0"),
+                })
 
-            inst = client.start_process(process_id)
-            case_id = (
-                    inst.get("caseId")
-                    or inst.get("processInstanceId")
-                    or inst.get("id")
-            )
+            necesidades_json = json.dumps(needs_with_help, ensure_ascii=False)
 
-            client.set_case_var(
-                case_id, "idProyecto", int(project.id), "java.lang.Long"
+            pid = client.get_process_id(
+                settings.BONITA_PROCESS_NAME,
+                settings.BONITA_PROCESS_VERSION,
             )
-            client.set_case_var(
-                case_id, "colaboracionesSolicitadas",
-                len(necesidades),
-                "java.lang.Integer",
-            )
-            tasks = client.find_ready_user_tasks(case_id)
-            if tasks:
-                task = next(
-                    (t for t in tasks if t.get("displayName") == "Crear proyecto en la app"),
-                    tasks[0],
-                )
-                uid = client.get_session_user_id()
-                client.assign_task(task["id"], uid)
-                client.execute_task(task["id"])
+            inst = client.start_process(pid)
+            case_id = inst.get("caseId") or inst.get("id")
+
+            client.set_case_var(case_id, "idProyecto", project.id, "java.lang.Long")
+            client.set_case_var(case_id, "colaboracionesSolicitadas",
+                                len(needs_with_help), "java.lang.Integer")
+            client.set_case_var(case_id, "necesidadesJson",
+                                necesidades_json, "java.lang.String")
+
+
+            uid = client.get_session_user_id()
+            ok = client.execute_task_with_retry(case_id, "Crear proyecto en la app", uid)
+            if not ok:
+                msg = "Error al ejecutar la tarea 'Crear proyecto en la app'."
+                raise RuntimeError(msg)
+
+            cloud_ok, err = client.wait_for_cloud_sync(case_id, "cloudSyncOk")
+
+            if not cloud_ok:
+                raise RuntimeError("Falló sincronizando necesidades")
 
             project.bonita_case_id = case_id
             project.save(update_fields=["bonita_case_id"])
@@ -137,6 +145,7 @@ def project_create(request):
                 client.abort_case(case_id)
         except Exception:
             pass
+
         return render(
             request,
             "projects/project_form.html",
@@ -150,7 +159,6 @@ def project_create(request):
             },
         )
 
-    # Éxito
     request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
     return redirect("projects:project_success")
 
@@ -200,6 +208,7 @@ def add_stage(request, project_id: int):
         messages.error(request, "El formulario de etapa contenía errores.")
 
     return redirect("projects:project_detail", project_id=project_id)
+
 
 @require_user_passes_test(is_ong_solicitante)
 @require_http_methods(["POST"])

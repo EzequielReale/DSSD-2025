@@ -253,7 +253,6 @@
                 <button class="btn btn-primary" type="submit">
                     Buscar
                 </button>
-                <!-- Este botón ahora es un link que resetea los filtros -->
                 <a class="btn" href="{% url 'projects:needs' %}">
                     Limpiar
                 </a>
@@ -286,30 +285,47 @@
                 <th>Descripción</th>
                 <th>Monto/Cant.</th>
                 <th>Estado</th>
+                <th>Ofrecer Compromiso</th>
             </tr>
             </thead>
             <tbody id="rows">
-                <!-- Renderizamos los datos pasados desde la vista -->
                 {% for n in needs_list %}
-                <tr>
-                    <td>
-                        <a href="{% url 'projects:project_detail' n.project.id %}">
-                            {{ n.project.name|default:"" }}
-                        </a>
-                    </td>
-                    <td><span class="badge badge-type">{{ n.get_request_type_display }}</span></td>
-                    <td>{{ n.description|default:"" }}</td>
-                    <td>{{ n.target_qty|default:"" }}</td>
-                    <td>
-                        {% if n.status == "COMPLETED" %}
-                            <span class="badge badge-ok">✓ Cumplida</span>
-                        {% elif n.status == "RESERVED" %}
-                            <span class="badge badge-warn">⚠ Reservada</span>
-                        {% else %}
-                            <span class="badge badge-pending">○ Pendiente</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                    <tr>
+                        <td>{{ n.project.name }}</td>
+                        <td>{{ n.get_request_type_display }}</td>
+                        <td>{{ n.description }}</td>
+                        <td>{{ n.target_qty }}</td>
+                        <td>{{ n.get_status_display }}</td>
+                        <td>
+                            {% if n.status == "OPEN" %}
+                                <!--
+                                <form action="{% url 'projects:create_commitment' n.id %}"
+                                      method="post"
+                                      style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;">
+                                    {% csrf_token %}
+                                    <input type="number"
+                                           name="amount"
+                                           step="0.01"
+                                           min="0"
+                                           placeholder="Cant."
+                                           style="width:90px;padding:.3rem .4rem;font-size:.85rem;">
+                                    <input type="text"
+                                           name="description"
+                                           placeholder="Descripción (opcional)"
+                                           style="flex:1;min-width:120px;padding:.3rem .4rem;font-size:.85rem;">
+                                    <button type="submit"
+                                            class="btn btn-primary"
+                                            style="padding:.3rem .6rem;font-size:.85rem;">
+                                        Ofrecer
+                                    </button>
+                                </form>
+                                -->
+                                <span class="muted">Comprometer (hardcodeado</span>
+                            {% else %}
+                                <span class="muted">No disponible</span>
+                            {% endif %}
+                        </td>
+                    </tr>
                 {% empty %}
                 <!-- Mostramos el estado vacío si no hay datos -->
                 <tr>

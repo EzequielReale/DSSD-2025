@@ -264,7 +264,15 @@
 
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Tipo</th><th>Descripción</th><th>Monto/Cant.</th><th>Estado</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Monto/Cant.</th>
+                        <th>Estado</th>
+                        <th>Necesita colaboración</th>
+                    </tr>
+                </thead>
                 <tbody id="rows">
                     {% for n in needs_list %}
                     <tr>
@@ -278,6 +286,13 @@
                                 <span class="badge badge-warn">⚠ Reservada</span>
                             {% else %}
                                 <span class="badge badge-pending">○ Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if n.needs_help %}
+                                <span class="badge badge-warn">Si</span>
+                            {% else %}
+                                <span class="badge badge-ok">No</span>
                             {% endif %}
                         </td>
                     </tr>

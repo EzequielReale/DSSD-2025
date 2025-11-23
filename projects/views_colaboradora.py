@@ -5,7 +5,7 @@ from django.views.decorators.http import require_http_methods
 
 from ProjectPlanning.decorators import require_user_passes_test
 
-from .models import CollaborationRequest, RequestStatus
+from .models import CollaborationRequest, RequestStatus, Commitment, CommitmentStatus
 from .views import _wants_json, is_ong_colaboradora
 from integrations.bonita_client import BonitaClient
 
@@ -60,7 +60,6 @@ def needs(request):
         "needs_list": q,
         "filters": filter_values,
     })
-
 
 # TODO: más adelante
 # - reservar necesidad (aceptar colaboración)
