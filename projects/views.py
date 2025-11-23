@@ -213,7 +213,6 @@ def project_detail(request, project_id):
 
     project = full_project['local']
     needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
-    print("Necesidades remotas:", needs_remote)
 
     stage_form = StageForm()
     observation_form = ObservationForm()
@@ -258,7 +257,7 @@ def start_monitoring(request, project_id):
         payload = {"idProyectoInput": project.id, "aprobadoInput": False}
         max_retries = 10
         for i in range(max_retries):
-            success = client.execute_task_2(
+            success = client.execute_bonita_task(
                 case_id,
                 "Revisión de proyectos",
                 client.get_session_user_id(),
@@ -279,7 +278,7 @@ def start_monitoring(request, project_id):
     except Exception as e:
         messages.error(request, f"Error al iniciar monitoreo: {e}")
     
-    time.sleep(10)
+    time.sleep(1)
     return redirect('projects:project_detail', project_id=project.id)
 
 
@@ -329,13 +328,13 @@ def add_observation(request, project_id: int):
             observation.observer_label = f"{request.user.username}"
             observation.save()
 
+            # Acá necesitaria un contador o algo para que no ejecute la tarea 2 veces. Es solo 1 observación por proceso
             client = service.bonita
-            client.execute_task(
-                case_id=project.bonita_case_id,
+            success = client.execute_bonita_task(
+                case_id=project.monitoring_case_id,
                 task_name="Enviar informe de sugerencias",
                 user_id=client.get_session_user_id(),
             )
-
             messages.success(request, "Observación agregada correctamente.")
         except Exception as e:
             messages.error(request, f"Error al guardar la observación: {e}")
@@ -343,4 +342,26 @@ def add_observation(request, project_id: int):
         messages.error(request, "El formulario de observación contenía errores.")
 
     return redirect("projects:project_detail", project_id=project_id)
-    
+
+@login_required
+@user_passes_test(is_ong_solicitante)
+@require_http_methods(["POST"])
+def fix_observation(request, project_id: int, observation_id: int):
+    """
+    Resuelve una observación.
+    """
+    try:
+        observation = get_object_or_404(Observation, pk=observation_id)
+        observation.resolved = True
+        observation.save()
+        client = service.bonita
+        success = client.execute_bonita_task(
+            case_id=observation.project.monitoring_case_id,
+            task_name="Resolver problemas",
+            user_id=client.get_session_user_id(),
+        )
+        messages.success(request, "Observación resuelta correctamente.")
+    except Exception as e:
+        messages.error(request, f"Error al resolver la observación: {e}")
+
+    return redirect("projects:project_detail", project_id=project_id)

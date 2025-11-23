@@ -106,13 +106,12 @@ class BonitaClient:
             resp = self.s.get(url, headers=self._headers(), timeout=5)
             
             if resp.status_code == 404:
-                print("Me fui baiteado")
+                print(resp.text)
                 return self.get_archived_case_variable(case_id, var_name)
             
             if resp.status_code == 200:
                 data = resp.json()
                 val = data.get("value")
-                print("Valor bruto de la variable:", val)
                 
                 # Intento de parseo JSON robusto
                 if isinstance(val, str):
@@ -154,8 +153,7 @@ class BonitaClient:
 
     # --- TAREAS ---
 
-    def execute_task(self, case_id, task_name, user_id, contract=None):
-        """Busca, asigna y ejecuta una tarea humana."""
+    def execute_bonita_task(self, case_id, task_name, user_id, contract=None):
         try:
             resp = self.s.get(
                 f"{self.base}/API/bpm/userTask",
@@ -163,38 +161,7 @@ class BonitaClient:
                 headers=self._headers()
             )
             tasks = resp.json()
-            target = next((t for t in tasks if t["displayName"] == task_name), None)
-            
-            if target:
-                tid = target['id']
-                if user_id:
-                    self.s.put(
-                        f"{self.base}/API/bpm/userTask/{tid}",
-                        json={"assigned_id": user_id},
-                        headers=self._headers()
-                    )
-                
-                payload = contract if contract else {}
-
-                self.s.post(
-                    f"{self.base}/API/bpm/userTask/{tid}/execution",
-                    json=payload,
-                    headers=self._headers()
-                )
-                return True
-            return False
-        except Exception as e:
-            print(f"Error ejecutando tarea {task_name}: {e}")
-            return False
-    
-    def execute_task_2(self, case_id, task_name, user_id, contract):
-        try:
-            resp = self.s.get(
-                f"{self.base}/API/bpm/userTask",
-                params={"f": [f"caseId={case_id}", "state=ready"], "c": 50},
-                headers=self._headers()
-            )
-            tasks = resp.json()
+            print(f"DEBUG: Tasks found for case {case_id}: {[t['displayName'] for t in tasks]}")
             target = next((t for t in tasks if t["displayName"] == task_name), None)
             
             if target:

@@ -38,7 +38,7 @@
 
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
     }
 
     .stat-label {
@@ -196,6 +196,7 @@
         }
 
     }
+
     .form-card {
         background: #f9fafb;
         border: 1px solid var(--line);
@@ -203,6 +204,7 @@
         padding: 1.25rem;
         margin-top: 1.5rem;
     }
+
     .form-card h4 {
         margin: 0 0 1rem 0;
     }
@@ -213,7 +215,7 @@
 <div class="stack">
     <div class="card project-header">
         <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
-        
+
         <h2 id="pname" class="project-title">{{ project.name }}</h2>
         <p id="pdesc" class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
         <div class="stats-grid">
@@ -233,11 +235,12 @@
     </div>
 
     {% if messages %}
-        {% for message in messages %}
-            <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
+    {% for message in messages %}
+    <div
+        class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
     {% endif %}
 
     <!-- Sección de Necesidades (Datos desde Bonita) -->
@@ -271,16 +274,16 @@
                         <td>{{ n.target_qty }}</td>
                         <td>
                             {% if n.ayuda %}
-                                <span class="badge badge-warn">Sí</span>
+                            <span class="badge badge-warn">Sí</span>
                             {% else %}
-                                <span class="badge badge-neutral">No</span>
+                            <span class="badge badge-neutral">No</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if n.status == 'OPEN' %}
-                                <span class="badge badge-ok">Pendiente</span>
+                            <span class="badge badge-ok">Pendiente</span>
                             {% else %}
-                                <span class="badge badge-pending">Completada</span>
+                            <span class="badge badge-pending">Completada</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -306,7 +309,14 @@
         </div>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Nombre</th><th>Descripción</th><th>Inicio</th><th>Fin</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for stage in stages %}
                     <tr>
@@ -316,14 +326,16 @@
                         <td>{{ stage.end_date|date:"Y-m-d" }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4">
-                        <div class="empty-state">No hay etapas registradas.</div>
-                    </td></tr>
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">No hay etapas registradas.</div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        
+
         {% if is_creador %}
         <div class="form-card">
             <h4>Agregar Nueva Etapa</h4>
@@ -345,23 +357,57 @@
         </div>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>Observador</th><th>Observación</th><th>Fecha</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Observador</th>
+                        <th>Observación</th>
+                        <th>Fecha</th>
+                        <th>Resuelta</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for obs in observations %}
                     <tr>
                         <td>{{ obs.observer_label }}</td>
-                        <td>{{ obs.text }}</td>
-                        <td>{{ obs.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if obs.text|length > 30 %}
+                            <details>
+                                <summary>{{ obs.text|slice:":30" }}...</summary>
+                                <p style="margin-top: 0.3rem; white-space: pre-wrap;">{{ obs.text }}</p>
+                            </details>
+                            {% else %}
+                            {{ obs.text }}
+                            {% endif %}
+                        </td>
+                        <td>{{ obs.created_at|date:"d-m-Y" }}</td>
+                        <td>
+                            {% if obs.resolved %}
+                            <span class="badge badge-ok">✅</span>
+                            {% else %}
+                            <span class="badge badge-neutral">❌</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if is_creador and not obs.resolved %}
+                            <form action="{% url 'projects:fix_observation' project.id obs.id %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary">Marcar como resuelta</button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="3">
-                        <div class="empty-state">No hay observaciones.</div>
-                    </td></tr>
+                    <tr>
+                        <td colspan="3">
+                            <div class="empty-state">No hay observaciones.</div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        
+
         {% if is_consejo %}
         <div class="form-card">
             <h4>Cargar Observación</h4>

@@ -159,6 +159,7 @@ class Observation(models.Model):
     
     observer_label = models.CharField(max_length=150, help_text="Nombre del Consejo o supervisor")
     text = models.TextField(help_text="Descripción de la observación o mejora")
+    resolved = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     
