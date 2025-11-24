@@ -354,14 +354,21 @@ def fix_observation(request, project_id: int, observation_id: int):
     """
     try:
         observation = get_object_or_404(Observation, pk=observation_id)
-        observation.resolved = True
-        observation.save()
+        project = observation.project
+        
         client = service.bonita
         success = client.execute_bonita_task(
             case_id=observation.project.monitoring_case_id,
             task_name="Resolver problemas",
             user_id=client.get_session_user_id(),
         )
+
+        observation.resolved = True
+        observation.save()
+        project.monitoring_case_id = None
+        project.has_monitoring = False
+        project.save()
+        
         messages.success(request, "Observación resuelta correctamente.")
     except Exception as e:
         messages.error(request, f"Error al resolver la observación: {e}")
