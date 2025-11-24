@@ -34,6 +34,7 @@ class Project(models.Model):
     created_by_ong = models.CharField(max_length=200, blank=True)
     bonita_case_id = models.CharField(max_length=64, blank=True, null=True)
     monitoring_case_id = models.CharField(max_length=64, blank=True, null=True)
+    has_monitoring = models.BooleanField(default=False)
     
     created_by_user = models.ForeignKey(
         User, 

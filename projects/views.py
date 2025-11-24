@@ -204,7 +204,6 @@ def project_detail(request, project_id):
     Detalle completo.
     Usa el servicio para mezclar datos locales con datos de Bonita.
     """
-    # 1. Usar el servicio para obtener todo el paquete de datos
     full_project = service.get_full_project(project_id)
     
     if not full_project:
@@ -250,10 +249,6 @@ def start_monitoring(request, project_id):
             {}
         )
         
-        # GUARDAMOS EL ID EN LA BD
-        project.monitoring_case_id = case_id
-        project.save()
-
         payload = {"idProyectoInput": project.id, "aprobadoInput": False}
         max_retries = 10
         for i in range(max_retries):
@@ -265,6 +260,8 @@ def start_monitoring(request, project_id):
             )
             
             if success:
+                project.monitoring_case_id = case_id
+                project.save()
                 break
     
             # Si no la encontró, esperamos un poco antes de volver a preguntar
@@ -321,20 +318,25 @@ def add_observation(request, project_id: int):
     project = get_object_or_404(Project, pk=project_id)
     form = ObservationForm(request.POST)
     
+    if project.has_monitoring:
+        messages.error(request, "El proyecto ya tiene una observación cargada.")
+        return redirect("projects:project_detail", project_id=project_id)
+    
     if form.is_valid():
         try:
             observation = form.save(commit=False)
             observation.project = project
             observation.observer_label = f"{request.user.username}"
             observation.save()
+            project.has_monitoring = True
+            project.save()
 
-            # Acá necesitaria un contador o algo para que no ejecute la tarea 2 veces. Es solo 1 observación por proceso
             client = service.bonita
             success = client.execute_bonita_task(
-                case_id=project.monitoring_case_id,
-                task_name="Enviar informe de sugerencias",
-                user_id=client.get_session_user_id(),
-            )
+                    case_id=project.monitoring_case_id,
+                    task_name="Enviar informe de sugerencias",
+                    user_id=client.get_session_user_id(),
+                )
             messages.success(request, "Observación agregada correctamente.")
         except Exception as e:
             messages.error(request, f"Error al guardar la observación: {e}")
