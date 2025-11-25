@@ -130,8 +130,7 @@
                 <a href="{% url 'projects:project_create' %}">Nuevo proyecto</a>
             {% endif %}
             {% if request.user|has_group:"ONGs colaboradoras" %}
-                <a href="{% url 'projects:needs' %}">Pedidos de colaboración</a>
-                <a href="{% url 'projects:my_commitments' %}">Mis colaboraciones</a>
+               <a href="{% url 'projects:collab_projects' %}">Pedidos de colaboración</a>
             {% endif %}
             {% if request.user|has_group:"Consejo Directivo" or request.user|has_group:"Consejo Directivo" %}
                 <a href="{% url 'projects:projects_list' %}">Proyectos</a>

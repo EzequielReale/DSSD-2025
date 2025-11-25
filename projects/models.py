@@ -22,6 +22,7 @@ class CommitmentStatus(models.TextChoices):
     FULFILLED = "FULFILLED", "Completado"
     CANCELLED = "CANCELLED", "Cancelado"
 
+
 class Project(models.Model):
     """
     Proyecto.
@@ -150,6 +151,7 @@ class Stage(models.Model):
     def __str__(self):
         return self.name
 
+
 class Observation(models.Model):
     """
     Observación del Consejo Directivo.
@@ -171,20 +173,4 @@ class Observation(models.Model):
     def __str__(self):
         return f"Observación para {self.project.name}"
 
-# class User(models.Model):
-#     """
-#     Usuario del sistema.
-#     """
 
-#     name = models.CharField(max_length=200)
-#     email = models.EmailField(unique=True)
-#     password = models.CharField(max_length=128)  # Hasheada en lo posible
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self):
-#         return f"{self.name} <{self.email}>"
-
-#     class Meta:
-#         db_table = "users"
-#         ordering = ['-created_at']

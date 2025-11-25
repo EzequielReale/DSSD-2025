@@ -19,10 +19,17 @@ urlpatterns = [
     ),
 
     # ONG COLABORADORA
-    path("needs/", col.needs, name="needs"),
-    # path("needs/<int:need_id>/commit", col.create_commitment, name="create_commitment"),
-    # path("commitments/", col.my_commitments, name="my_commitments"),
-    # rutas para aceptar/ejecutar colaboraciones
+    path("colab/projects/", col.collab_projects, name="collab_projects"),
+    path(
+        "colab/projects/<int:project_id>/needs/",
+        col.collab_project_needs,
+        name="collab_project_needs",
+    ),
+    path(
+        "colab/projects/<int:project_id>/needs/<int:request_id>/offer/",
+        col.offer_commitment,
+        name="offer_commitment",
+    ),
 
     # CONSEJO DIRECTIVO / GERENCIAL
     path(

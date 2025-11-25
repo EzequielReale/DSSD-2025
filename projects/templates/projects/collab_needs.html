@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}Necesidades del proyecto{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .page-subtitle {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--ink-2);
+            font-weight: 400;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--brand);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .back-link:hover {
+            opacity: 0.7;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .table thead {
+            background: #f9fafb;
+            border-bottom: 2px solid var(--line);
+        }
+
+        .table th {
+            padding: 0.85rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--ink-2);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .table tbody tr {
+            border-bottom: 1px solid var(--line);
+            transition: background-color 0.15s ease;
+        }
+
+        .table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .table td {
+            padding: 1rem;
+            color: var(--ink);
+        }
+
+        .need-title {
+            font-weight: 600;
+            color: var(--ink-2);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .badge-type-econ {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-type-mat {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-type-mo {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-type-otro {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .badge-status-open {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-status-fulfilled {
+            background: #f3f4f6;
+            color: var(--ink-2);
+        }
+
+        .amount-value {
+            font-weight: 500;
+            color: var(--ink-2);
+        }
+
+        .muted {
+            color: var(--ink-2);
+            font-size: 0.875rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--ink-2);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .table {
+                font-size: 0.875rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 0.75rem 0.65rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <a href="{% url 'projects:collab_projects' %}" class="back-link">
+            <span>←</span>
+            <span>Volver a proyectos</span>
+        </a>
+
+        <div class="page-header">
+            <h1 class="page-title">Necesidades del proyecto</h1>
+            <p class="page-subtitle">
+                Necesidades pendientes recuperadas desde la Cloud API mediante Bonita
+            </p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if needs %}
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Cant./Monto</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for n in needs %}
+                        <tr>
+                            <td>
+                                <span class="need-title">{{ n.title }}</span>
+                            </td>
+
+                            <td>
+                            <span class="badge badge-type-{{ n.request_type|lower }}">
+                                {% if n.request_type == "ECON" %}
+                                    Económica
+                                {% elif n.request_type == "MAT" %}
+                                    Materiales
+                                {% elif n.request_type == "MO" %}
+                                    Mano de obra
+                                {% else %}
+                                    Otro
+                                {% endif %}
+                            </span>
+                            </td>
+
+                            <td>{{ n.description }}</td>
+
+                            <td>
+                            <span class="amount-value">
+                                {% if n.request_type == "ECON" %}
+                                    ${{ n.target_qty }}
+                                {% elif n.request_type == "MAT" %}
+                                    {{ n.target_qty }} unid
+                                {% elif n.request_type == "MO" %}
+                                    {{ n.target_qty }}h
+                                {% else %}
+                                    {{ n.target_qty }}
+                                {% endif %}
+                            </span>
+                            </td>
+
+                            <td>
+                            <span class="badge badge-status-{{ n.status|lower }}">
+                                {% if n.status == "OPEN" %}
+                                    Pendiente
+                                {% elif n.status == "RESERVED" %}
+                                    Reservada
+                                {% elif n.status == "COMPLETED" %}
+                                    Completada
+                                {% else %}
+                                    {{ n.status }}
+                                {% endif %}
+                            </span>
+                            </td>
+
+                            <td>
+                                {% if n.status == "OPEN" %}
+                                    <form method="post"
+                                          action="{% url 'projects:offer_commitment' project.id n.id %}"
+                                          style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 300px;">
+                                        {% csrf_token %}
+
+                                        <input type="text"
+                                               name="ong_name"
+                                               placeholder="Nombre ONG"
+                                               required
+                                               style="padding: 0.5rem; border: 1px solid var(--line); border-radius: 6px; font-size: 0.875rem;">
+
+                                        <textarea name="description"
+                                                  placeholder="Breve descripción"
+                                                  rows="2"
+                                                  required
+                                                  style="padding: 0.5rem; border: 1px solid var(--line); border-radius: 6px; font-size: 0.875rem; resize: vertical; font-family: inherit;"></textarea>
+
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            Comprometerme
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="muted">No disponible</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>No hay necesidades abiertas para este proyecto.</p>
+            </div>
+        {% endif %}
+
+    </div>
+{% endblock %}

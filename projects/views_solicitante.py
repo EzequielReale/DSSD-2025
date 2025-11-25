@@ -15,7 +15,7 @@ from django.utils import timezone
 from ProjectPlanning.decorators import require_user_passes_test
 
 from .forms import ProjectModelForm, NeedItemForm, StageForm
-from .models import Project, CollaborationRequest, Observation
+from .models import Project, CollaborationRequest, Observation, RequestStatus
 from integrations.bonita_client import BonitaClient
 from .views import is_ong_solicitante
 from .services import ProjectService
@@ -96,7 +96,13 @@ def project_create(request):
                     request_type=n_data.get("tipo"),
                     target_qty=n_data.get("cantidad", 0),
                     needs_help=n_data.get("ayuda", False),
+                    status=(
+                        RequestStatus.OPEN
+                        if n_data.get("ayuda")
+                        else RequestStatus.COMPLETED
+                    )
                 )
+
 
             needs_with_help = []
             for n_data in necesidades:
