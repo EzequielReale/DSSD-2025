@@ -10,7 +10,7 @@ class BonitaClient:
 
     def __init__(self, role: str = "SOLICITANTE"):
         self.base = settings.BONITA_URL.rstrip("/")
-        self.user = settings.BONITA_USERS.get(role, settings.BONITA_USER_SOLICITANTE)
+        self.user = settings.BONITA_USER_DIRECTIVO
         self.password = settings.BONITA_PASS
         self.s = requests.Session()
         self.csrf = None

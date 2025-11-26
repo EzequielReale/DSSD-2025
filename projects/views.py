@@ -15,6 +15,9 @@ from django.db.models import Count, Q
 from django.utils.dateformat import format as dfmt
 from django.contrib.auth.decorators import user_passes_test
 
+from ProjectPlanning.decorators import require_user_passes_test
+
+
 from .forms import ProjectModelForm, NeedItemForm, StageForm, ObservationForm
 from .models import Project, CollaborationRequest, Stage, Observation, RequestStatus
 from integrations.bonita_client import BonitaClient
@@ -51,192 +54,137 @@ def is_ong_colaboradora(user):
 
 
 def is_consejo_directivo(user):
-    """Verifica si el usuario está en el grupo 'Consejo Directivo'"""
-    if user.is_authenticated:
-        return user.groups.filter(name='Consejo Directivo').exists()
-    return False
-
-@user_passes_test(is_ong_solicitante)
-@require_http_methods(["GET", "POST"])
-def project_create(request):
-    NeedFormSet = formset_factory(
-        NeedItemForm, extra=0, can_delete=True, min_num=1, validate_min=True
+    """Verifica si el usuario está en el grupo 'Consejo Directivo'."""
+    return (
+            user.is_authenticated
+            and user.groups.filter(name='Consejo Directivo').exists()
     )
 
-    if request.method == "GET":
-        return render(
-            request,
-            "projects/project_form.html",
-            {
-                "form": ProjectModelForm(),
-                "formset": NeedFormSet(prefix="needs", initial=[{}]),
-                "error_msg": None,
-            },
+def is_solicitante_o_consejo(user):
+    return is_ong_solicitante(user) or is_consejo_directivo(user)
+
+@require_user_passes_test(is_solicitante_o_consejo)
+def projects_list(request):
+    """
+    Listado de proyectos.
+    - ONG solicitante: solo los que creó ese usuario
+    - Consejo Directivo: todos los proyectos
+    /projects/ → HTML
+    """
+    if _wants_json(request):
+        return JsonResponse({"error": "Endpoint JSON obsoleto"}, status=400)
+
+    # Si es Consejo Directivo ve todos, si no solo los propios
+    if is_consejo_directivo(request.user):
+        projects_qs = Project.objects.all().order_by("-id")
+    else:
+        projects_qs = Project.objects.filter(
+            created_by_user=request.user
+        ).order_by("-id")
+
+    return render(
+        request,
+        "projects/projects.html",
+        {"projects": projects_qs,
+        "is_consejo": is_consejo_directivo(request.user),
+        },
+    )
+
+
+@require_user_passes_test(is_solicitante_o_consejo)
+def project_detail(request, project_id: int):
+    """
+    /projects/<id>/ → HTML
+    /projects/<id>/?format=json[&all=1] → JSON con detalle + necesidades
+
+    - ONG solicitante: solo puede ver proyectos creados por ese usuario
+    - Consejo Directivo: puede ver cualquier proyecto
+    """
+    if is_consejo_directivo(request.user):
+        project = get_object_or_404(Project, pk=project_id)
+    else:  # ONG solicitante
+        project = get_object_or_404(
+            Project,
+            pk=project_id,
+            created_by_user=request.user,
         )
 
-    form = ProjectModelForm(request.POST)
-    formset = NeedFormSet(request.POST, prefix="needs")
+    include_all = request.GET.get("all") in ("1", "true", "True")
 
-    if not (form.is_valid() and formset.is_valid()):
-        return render(
-            request,
-            "projects/project_form.html",
-            {"form": form, "formset": formset, "error_msg": None},
-        )
+    q_needs = project.requests.all()
+    if not include_all:
+        q_needs = q_needs.filter(status=RequestStatus.OPEN)
 
-    necesidades = []
-    for f in formset.cleaned_data:
-        if not f or f.get("DELETE"):
-            continue
-        tipo = f.get("need_type")
-        cantidad = f.get("quantity")
-        necesidades.append({
-            "tipo": tipo,
-            "detalle": f.get("need_description"),
-            "cantidad": cantidad, # El modelo maneja Decimal
-            "ayuda": bool(f.get("needs_help")),
-        })
-
-    if not necesidades:
-        return render(
-            request,
-            "projects/project_form.html",
-            {"form": form, "formset": formset,
-             "error_msg": "Debe indicar al menos una necesidad."},
-        )
-
-    client = None
-    case_id = None
-    project = None
+    # --- RESPUESTA JSON ---
+    if _wants_json(request):
+        def fmt(d): return dfmt(d, "Y-m-d") if d else ""
+        payload = {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description or "",
+            "start_date": fmt(project.start_date),
+            "end_date": fmt(project.end_date),
+            "needs": [{
+                "type": n.request_type,
+                "description": n.description,
+                "amount": float(n.target_qty),
+                "is_fulfilled": n.status == RequestStatus.COMPLETED,
+                "needs_help": n.needs_help,
+            } for n in q_needs],
+        }
+        return JsonResponse(payload, safe=False)
 
     try:
-        with transaction.atomic():
-            project = form.save(commit=False)
-            project.created_by_ong = form.cleaned_data.get("created_by_ong") or "ONG Demo"
-            project.created_by_user = request.user
-            project.save()
-
-            # for n_data in necesidades:
-            #     CollaborationRequest.objects.create(
-            #         project=project,
-            #         title=n_data.get("detalle", "Sin título")[:200],
-            #         description=n_data.get("detalle"),
-            #         request_type=n_data.get("tipo"),
-            #         target_qty=n_data.get("cantidad", 0),
-            #         needs_help=n_data.get("ayuda", False)
-            #     )
-
-            client = BonitaClient()
-            process_id = getattr(settings, "BONITA_PROCESS_ID", None) or client.get_process_id(
-                settings.BONITA_PROCESS_NAME, settings.BONITA_PROCESS_VERSION
-            )
-
-            inst = client.start_process(process_id)
-            case_id = (
-                    inst.get("caseId")
-                    or inst.get("processInstanceId")
-                    or inst.get("id")
-            )
-            
-            client.set_case_var(case_id, "idProyecto", int(project.id), "java.lang.Long")
-            client.set_case_var(case_id, "colaboracionesSolicitadas", len(necesidades), "java.lang.Integer")
-            tasks = client.find_ready_user_tasks(case_id)
-            if tasks:
-                task = next(
-                    (t for t in tasks if t.get("displayName") == "Crear proyecto en la app"),
-                    tasks[0],
-                )
-                uid = client.get_session_user_id()
-                client.assign_task(task["id"], uid)
-                client.execute_task(task["id"], "Crear proyecto en la app", uid)
-
-            project.bonita_case_id = case_id
-            project.save(update_fields=["bonita_case_id"])
-
+        stages = project.stages.all()
+        observations = project.observations.all()
     except Exception as e:
-        try:
-            if client and case_id:
-                client.abort_case(case_id)
-        except Exception:
-            pass
-        return render(
-            request,
-            "projects/project_form.html",
-            {
-                "form": form,
-                "formset": formset,
-                "error_msg": (
-                        "No se pudo completar la operación (BD/Bonita). "
-                        "Intente más tarde o contacte al administrador. " + str(e)
-                ),
-            },
-        )
-
-    # Éxito
-    request.session["submitted"] = {"project_id": project.id, "bonita_error": None}
-    return redirect("projects:project_success")
-
-
-
-@login_required
-@user_passes_test(is_ong_solicitante)
-def project_success(request):
-    data = request.session.get("submitted")
-    if not data:
-        return redirect("projects:project_create")
-
-    project = Project.objects.filter(pk=data.get("project_id")).first()    
-    
-    if not project:
-        return redirect("projects:project_create")
-    
-    needs = project.requests.all()
+        messages.error(request, f"Error al consultar la base de datos: {e}")
+        stages = []
+        observations = []
 
     context = {
-        "project": project, 
-        "bonita_error": data.get("bonita_error"),
-        "needs": needs # Pasamos las necesidades locales
-    }
-    return render(request, "projects/project_success.html", context)
-
-@login_required
-def projects(request):
-    """Catálogo local. Muy rápido."""
-    projects_list = Project.objects.all()
-    return render(request, "projects/projects.html", {
-        "projects": projects_list,
-        "is_consejo": is_consejo_directivo(request.user),
-        })
-
-@login_required
-def project_detail(request, project_id):
-    """
-    Detalle completo.
-    Usa el servicio para mezclar datos locales con datos de Bonita.
-    """
-    full_project = service.get_full_project(project_id)
-    
-    if not full_project:
-        messages.error(request, "El proyecto no existe.")
-        return redirect('projects:projects_list')
-
-    project = full_project['local']
-    needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
-
-    stage_form = StageForm()
-    observation_form = ObservationForm()
-
-    return render(request, "projects/project_detail.html", {
+        "project_id": project.id,
         "project": project,
-        "needs_list": needs_remote,
-        "stages": project.stages.all(),
-        "observations": project.observations.all(),
-        "stage_form": stage_form,
-        "observation_form": observation_form,
-        # Permisos
+        "stages": stages or [],
+        "observations": observations or [],
+        "stage_form": StageForm(),
+        "observation_form": ObservationForm(),
+        "needs_list": q_needs,
+        "include_all_needs": include_all,
         "is_consejo": is_consejo_directivo(request.user),
         "is_creador": (request.user == project.created_by_user)
-    })
+    }
+    return render(request, "projects/project_detail.html", context)
+
+# @login_required
+# def project_detail(request, project_id):
+#     """
+#     Detalle completo.
+#     Usa el servicio para mezclar datos locales con datos de Bonita.
+#     """
+#     full_project = service.get_full_project(project_id)
+    
+#     if not full_project:
+#         messages.error(request, "El proyecto no existe.")
+#         return redirect('projects:projects_list')
+
+#     project = full_project['local']
+#     needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
+
+#     stage_form = StageForm()
+#     observation_form = ObservationForm()
+
+#     return render(request, "projects/project_detail.html", {
+#         "project": project,
+#         "needs_list": needs_remote,
+#         "stages": project.stages.all(),
+#         "observations": project.observations.all(),
+#         "stage_form": stage_form,
+#         "observation_form": observation_form,
+#         # Permisos
+#         "is_consejo": is_consejo_directivo(request.user),
+#         "is_creador": (request.user == project.created_by_user)
+#     })
 
 @login_required
 @user_passes_test(is_consejo_directivo)
