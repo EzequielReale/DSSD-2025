@@ -249,9 +249,14 @@ def start_monitoring(request, project_id):
             {}
         )
         
-        payload = {"idProyectoInput": project.id, "aprobadoInput": False}
-        max_retries = 10
-        for i in range(max_retries):
+        payload = {
+            "idProyectoInput": project.id,
+            "aprobadoInput": False,
+            "emailConsejoInput": request.user.email,
+            "emailOngInput": project.created_by_user.email,
+        }
+        
+        while True:
             success = client.execute_bonita_task(
                 case_id,
                 "Revisión de proyectos",
