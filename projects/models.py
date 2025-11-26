@@ -22,6 +22,12 @@ class CommitmentStatus(models.TextChoices):
     FULFILLED = "FULFILLED", "Completado"
     CANCELLED = "CANCELLED", "Cancelado"
 
+class ProjectStatus(models.TextChoices):
+    OPEN = "OPEN", "Abierto"
+    WITH_COMMITMENTS = "WITH_COMMITMENTS", "Con compromisos"
+    READY = "READY", "Listo para ejecutar"
+    EXECUTING = "EXECUTING", "En ejecución"
+    FINISHED = "FINISHED", "Finalizado"
 
 class Project(models.Model):
     """
@@ -45,6 +51,7 @@ class Project(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=20, choices=ProjectStatus.choices, default=ProjectStatus.OPEN)
 
     def __str__(self): 
         return f"{self.name} ({self.start_date} – {self.end_date})"

@@ -79,7 +79,7 @@ def project_detail(request, project_id: int):
     """
     if is_consejo_directivo(request.user):
         project = get_object_or_404(Project, pk=project_id)
-    else:  # ONG solicitante
+    else:
         project = get_object_or_404(
             Project,
             pk=project_id,
@@ -102,6 +102,7 @@ def project_detail(request, project_id: int):
             "start_date": fmt(project.start_date),
             "end_date": fmt(project.end_date),
             "needs": [{
+                "title": n.title,
                 "type": n.request_type,
                 "description": n.description,
                 "amount": float(n.target_qty),

@@ -1,326 +1,322 @@
 {% extends "base.html" %}
 {% load group_tags %}
+
 {% block title %}Proyecto {{ project.name|default:"Cargando..." }}{% endblock %}
 
 {% block extra_head %}
-<style>
-    .project-header {
-        position: relative;
-    }
+    <style>
+        .back-link {
+            display: inline-block;
+            color: var(--brand);
+            text-decoration: none;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
 
-    .project-title {
-        margin: 1rem 0 0.5rem 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
+        .back-link:hover {
+            color: var(--brand-600);
+        }
 
-    .project-description {
-        margin: 0 0 1.25rem 0;
-        color: var(--ink-2);
-        font-size: 1.05rem;
-        line-height: 1.6;
-    }
+        .project-header {
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: var(--card);
+            border-radius: var(--radius);
+        }
 
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 0.85rem;
-        margin-top: 1.25rem;
-    }
-
-    .stat-card {
-        background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-    }
-
-    .stat-label {
-        color: var(--ink-2);
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-        margin-bottom: 0.35rem;
-    }
-
-    .stat-value {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
-
-    .view-toggle-card {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        margin-top: 1rem;
-    }
-
-    .badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.35rem 0.75rem;
-        border-radius: 8px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border: 1px solid;
-    }
-
-    .badge-neutral {
-        background: #f3f4f6;
-        border-color: #e5e7eb;
-        color: var(--ink-2);
-    }
-
-    .badge-ok {
-        background: #d1fae5;
-        border-color: #86efac;
-        color: #065f46;
-    }
-
-    .badge-warn {
-        background: #fef3c7;
-        border-color: #fde68a;
-        color: #92400e;
-    }
-
-    .badge-pending {
-        background: #e0e7ff;
-        border-color: #c7d2fe;
-        color: #3730a3;
-    }
-
-    .view-link {
-        color: var(--brand);
-        text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: color 0.15s ease;
-    }
-
-    .view-link:hover {
-        color: var(--brand-600);
-        text-decoration: underline;
-    }
-
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.25rem;
-    }
-
-    .section-title {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
-
-    .table-wrapper {
-        overflow-x: auto;
-        margin-top: 1rem;
-    }
-
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-    }
-
-    .table thead {
-        background: #f9fafb;
-        border-bottom: 2px solid var(--line);
-    }
-
-    .table th {
-        padding: 0.85rem 1rem;
-        text-align: left;
-        font-weight: 600;
-        color: var(--ink-2);
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .table tbody tr {
-        border-bottom: 1px solid var(--line);
-        transition: background-color 0.15s ease;
-    }
-
-    .table tbody tr:hover {
-        background: #f9fafb;
-    }
-
-    .table tbody tr:last-child {
-        border-bottom: none;
-    }
-
-    .table td {
-        padding: 1rem;
-        color: var(--ink);
-    }
-
-    .table td:first-child {
-        font-weight: 500;
-        color: var(--ink-2);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--ink-2);
-    }
-
-    .empty-state-icon {
-        font-size: 3rem;
-        margin-bottom: 0.5rem;
-        opacity: 0.3;
-    }
-
-    @media (max-width: 768px) {
         .project-title {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
         }
 
-        .stats-grid {
-            grid-template-columns: 1fr;
+        .project-description {
+            color: var(--ink-2);
+            margin: 0.5rem 0;
         }
 
-    }
-    .form-card {
-        background: #f9fafb;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1.25rem;
-        margin-top: 1.5rem;
-    }
-    .form-card h4 {
-        margin: 0 0 1rem 0;
-    }
-</style>
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 0.85rem;
+            box-shadow: var(--shadow);
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: var(--ink-2);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .card {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: #f9fafb;
+        }
+
+        th {
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--ink-2);
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        tbody tr:hover {
+            background: #fafafa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.65rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-reserved {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-pending {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .observer-badge {
+            background: var(--brand);
+            color: white;
+            padding: 0.25rem 0.65rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+        }
+
+        .toggle-link {
+            color: var(--brand);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .toggle-link:hover {
+            text-decoration: underline;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.65rem 1.25rem;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 2px 8px rgba(45, 108, 223, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
-<div class="stack">
-    <div class="card project-header">
-        <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
-        
-        <!-- Renderizamos los datos del proyecto directamente -->
-        <h2 id="pname" class="project-title">{{ project.name }}</h2>
-        <p id="pdesc" class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Inicio</div>
-                <div class="stat-value">{{ project.start_date|date:"Y-m-d" }}</div>
+    <a href="javascript:history.back()" class="back-link">← Volver</a>
+
+    <div class="project-header">
+        <h1 class="project-title">{{ project.name }}</h1>
+        <p class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-label">Inicio</div>
+                <div class="info-value">{{ project.start_date|date:"Y-m-d" }}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Fin</div>
-                <div class="stat-value">{{ project.end_date|date:"Y-m-d" }}</div>
+            <div class="info-card">
+                <div class="info-label">Fin</div>
+                <div class="info-value">{{ project.end_date|date:"Y-m-d" }}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Caso Bonita</div>
-                <div class="stat-value">{{ project.bonita_case_id|default:"N/A" }}</div>
+            <div class="info-card">
+                <div class="info-label">Caso Bonita</div>
+                <div class="info-value">{{ project.bonita_case_id|default:"N/A" }}</div>
             </div>
         </div>
     </div>
 
     {% if messages %}
-        {% for message in messages %}
-            <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
+        <div class="stack">
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <!-- Sección de Necesidades -->
+    <div class="actions">
+        {% if project.status == "READY" %}
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" name="execute_project" class="btn btn-primary">
+                    Marcar proyecto en ejecución
+                </button>
+            </form>
+        {% endif %}
+
+        {% if project.status == "WITH_COMMITMENTS" %}
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" name="analyze_commitment" class="btn">
+                    Analizar donaciones
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
     <div class="card">
         <div class="section-header">
-            <h3 class="section-title">Necesidades</h3>
-        </div>
-        
-        <!-- Mensajes de error de la vista (si los hubiera) -->
-        <div id="err" class="alert alert-err" style="display:none"></div>
-
-        <!-- Links para cambiar el filtro de necesidades -->
-        <div class="view-toggle-card">
-            {% if include_all_needs %}
-                <span class="badge badge-neutral">Mostrando Todas</span>
-                <a class="view-link" href="?">ver solo abiertas</a>
-            {% else %}
-                <span class="badge badge-neutral">Mostrando Abiertas</span>
-                <a class="view-link" href="?all=1">ver todas</a>
-            {% endif %}
+            <h2 class="section-title">Necesidades</h2>
+            <div>
+                {% if include_all_needs %}
+                    <span class="muted">Mostrando Todas</span>
+                    <a href="?needs_filter=open" class="toggle-link">ver solo abiertas</a>
+                {% else %}
+                    <span class="muted">Mostrando Abiertas</span>
+                    <a href="?needs_filter=all" class="toggle-link">ver todas</a>
+                {% endif %}
+            </div>
         </div>
 
         <div class="table-wrapper">
-            <table class="table">
+            <table>
                 <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Descripción</th>
-                        <th>Monto/Cant.</th>
-                        <th>Estado</th>
-                        <th>Necesita colaboración</th>
-                    </tr>
+                <tr>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Monto/Cant.</th>
+                    <th>Estado</th>
+                    <th>Necesita colaboración</th>
+                </tr>
                 </thead>
-                <tbody id="rows">
-                    {% for n in needs_list %}
+                <tbody>
+                {% for n in needs_list %}
                     <tr>
+                        <td>{{ n.title|default:"" }}</td>
                         <td>{{ n.get_request_type_display }}</td>
                         <td>{{ n.description|default:"" }}</td>
                         <td>{{ n.target_qty|default:"" }}</td>
                         <td>
                             {% if n.status == "COMPLETED" %}
-                                <span class="badge badge-ok">✓ Cumplida</span>
+                                <span class="badge badge-completed">✓ Cumplida</span>
                             {% elif n.status == "RESERVED" %}
-                                <span class="badge badge-warn">⚠ Reservada</span>
+                                <span class="badge badge-reserved">⚠ Reservada</span>
                             {% else %}
                                 <span class="badge badge-pending">○ Pendiente</span>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if n.needs_help %}
-                                <span class="badge badge-warn">Si</span>
-                            {% else %}
-                                <span class="badge badge-ok">No</span>
-                            {% endif %}
-                        </td>
+                        <td>{% if n.needs_help %}Si{% else %}No{% endif %}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📝</div>
-                                <div>No hay necesidades para mostrar</div>
-                            </div>
+                        <td colspan="6" class="empty-message">
+                            No hay necesidades para mostrar
                         </td>
                     </tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Sección de Etapas -->
     <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Etapas</h3>
-        </div>
+        <h2 class="section-title">Etapas</h2>
+
         <div class="table-wrapper">
-            <table class="table">
-                <thead><tr><th>Nombre</th><th>Descripción</th><th>Inicio</th><th>Fin</th></tr></thead>
+            <table>
+                <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                </tr>
+                </thead>
                 <tbody>
-                    {% for stage in stages %}
+                {% for stage in stages %}
                     <tr>
                         <td>{{ stage.name }}</td>
                         <td>{{ stage.description|default:"-" }}</td>
@@ -328,35 +324,40 @@
                         <td>{{ stage.end_date|date:"Y-m-d" }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4">
-                        <div class="empty-state">No hay etapas registradas.</div>
-                    </td></tr>
-                    {% endfor %}
+                    <tr>
+                        <td colspan="4" class="empty-message">
+                            No hay etapas registradas.
+                        </td>
+                    </tr>
+                {% endfor %}
                 </tbody>
             </table>
         </div>
 
         {% if request.user|has_group:"ONG solicitante" %}
-        <div class="form-card">
-            <h4>Agregar Nueva Etapa</h4>
-            <form action="{% url 'projects:add_stage' project.id %}" method="post">
+            <hr>
+            <h3>Agregar Nueva Etapa</h3>
+            <form method="post">
                 {% csrf_token %}
                 {{ stage_form.as_p }}
                 <div class="actions">
-                    <button type="submit" class="btn btn-primary">Guardar Etapa</button>
+                    <button type="submit" name="add_stage" class="btn btn-primary">
+                        Guardar Etapa
+                    </button>
                 </div>
             </form>
-        </div>
         {% endif %}
     </div>
 
-    <!-- Sección de Observaciones -->
     <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Observaciones del Consejo</h3>
-        </div>
+        <h2 class="section-title">Observaciones del Consejo</h2>
+
+        {% if request.user|has_group:"ONG solicitante" %}
+            <p class="muted">Visualiza y gestiona las observaciones realizadas por el Consejo Directivo</p>
+        {% endif %}
+
         <div class="table-wrapper">
-            <table class="table">
+            <table>
                 <thead>
                 <tr>
                     <th>Observador</th>
@@ -371,12 +372,14 @@
                 <tbody>
                 {% for obs in observations %}
                     <tr>
-                        <td>{{ obs.observer_label }}</td>
+                        <td>
+                            <span class="observer-badge">{{ obs.observer_label }}</span>
+                        </td>
                         <td>{{ obs.text }}</td>
                         <td>{{ obs.created_at|date:"Y-m-d H:i" }}</td>
                         <td>
                             {% if obs.is_resolved %}
-                                <span class="badge badge-ok">Resuelta</span>
+                                <span class="badge badge-completed">Resuelta</span>
                             {% else %}
                                 <span class="badge badge-pending">Pendiente</span>
                             {% endif %}
@@ -384,49 +387,41 @@
                         {% if request.user|has_group:"ONG solicitante" %}
                             <td>
                                 {% if not obs.is_resolved %}
-                                    <form action="{% url 'projects:observation_resolve' obs.id %}"
-                                          method="post">
+                                    <form method="post" style="display: inline;">
                                         {% csrf_token %}
-                                        <button type="submit"
-                                                class="btn btn-ghost"
-                                                style="font-size:.85rem;padding:.3rem .6rem;">
-                                            Marcar resuelta
-                                        </button>
+                                        <input type="hidden" name="resolve_observation_id" value="{{ obs.id }}">
+                                        <button type="submit" class="btn">Marcar resuelta</button>
                                     </form>
                                 {% endif %}
                             </td>
                         {% endif %}
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5">
-                        <div class="empty-state">No hay observaciones.</div>
-                    </td></tr>
+                    <tr>
+                        <td colspan="{% if request.user|has_group:'ONG solicitante' %}5{% else %}4{% endif %}" class="empty-message">
+                            No hay observaciones.
+                        </td>
+                    </tr>
                 {% endfor %}
                 </tbody>
             </table>
         </div>
 
         {% if request.user|has_group:"Consejo Directivo" %}
-            <div class="form-card">
-                <h4>Cargar Observación</h4>
-
-                <form action="{% url 'projects:add_observation' project.id %}" method="post">
-                    {% csrf_token %}
-
-                    <p><strong>Observador:</strong> Consejo Directivo</p>
-
-                    <div class="form-group">
-                        {{ observation_form.text.label_tag }}
-                        {{ observation_form.text }}
-                    </div>
-
-                    <div class="actions">
-                        <button type="submit" class="btn btn-primary">Guardar Observación</button>
-                    </div>
-                </form>
-            </div>
+            <hr>
+            <h3>Cargar Observación</h3>
+            <form method="post">
+                {% csrf_token %}
+                <p><strong>Observador:</strong> Consejo Directivo</p>
+                {{ observation_form.text.label_tag }}
+                {{ observation_form.text }}
+                <div class="actions">
+                    <button type="submit" name="add_observation" class="btn btn-primary">
+                        Guardar Observación
+                    </button>
+                </div>
+            </form>
         {% endif %}
     </div>
-</div>
 
 {% endblock %}

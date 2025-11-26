@@ -102,6 +102,11 @@
             <div class="need-card" data-active="1">
                 <div class="need-fields">
                     <div>
+                        <label for="{{ f.need_title.id_for_label }}">Título</label>
+                        {{ f.need_title }}
+                        {% if f.need_title.errors %}<div class="field-errors">{{ f.need_title.errors }}</div>{% endif %}
+                    </div>
+                    <div>
                         <label for="{{ f.need_type.id_for_label }}">Tipo</label>
                         {{ f.need_type }}
                         {% if f.need_type.errors %}<div class="field-errors">{{ f.need_type.errors }}</div>{% endif %}
@@ -143,6 +148,11 @@
                 {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
 
                 <div class="need-fields">
+                    <div>
+                        <label for="{{ formset.empty_form.need_title.id_for_label }}">Título</label>
+                        {{ formset.empty_form.need_title }}
+                        {% if formset.empty_form.need_title.errors %}<div class="field-errors">{{ formset.empty_form.need_title.errors }}</div>{% endif %}
+                    </div>
                     <div>
                         <label for="{{ formset.empty_form.need_type.id_for_label }}">Tipo</label>
                         {{ formset.empty_form.need_type }}

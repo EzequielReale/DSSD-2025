@@ -33,6 +33,10 @@ class NeedItemForm(forms.Form):
         ("MO",   "Mano de obra"),
         ("OTRO", "Otro"),
     ]
+    need_title = forms.CharField(
+        label="Título",
+        widget=forms.TextInput(attrs={"rows": 2,"placeholder": "Ingrese un título breve"
+        }))
     need_type = forms.ChoiceField(label="Tipo de necesidad", choices=NEED_CHOICES)
     need_description = forms.CharField(
         label="Detalle",

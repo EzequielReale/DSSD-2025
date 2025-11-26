@@ -106,8 +106,8 @@ def _build_target_summary(needs):
     if summary["MO"] > 0:
         objectives.append({
             "type": "MO",
-            "icon": "⏱",
-            "value": f"{summary['MO']}h",
+            "icon": "👷",
+            "value": f"{summary['MO']}",
         })
     if summary["OTRO"] > 0:
         objectives.append({
@@ -233,3 +233,73 @@ def offer_commitment(request, project_id, request_id):
 
     return redirect("projects:collab_project_needs", project_id=project_id)
 
+
+@require_user_passes_test(is_ong_colaboradora)
+@require_http_methods(["POST"])
+def fulfill_commitment(request, project_id, commitment_id):
+    """
+    Tarea 'Enviar colaboración' (ONG colaboradora).
+
+    Permite que la ONG colaboradora confirme que efectivamente
+    entregó la colaboración asociada al compromiso actual.
+    """
+    project = get_object_or_404(Project, pk=project_id)
+
+    if not project.bonita_case_id:
+        messages.error(
+            request,
+            "Este proyecto no tiene asociado un caso en Bonita. "
+            "No se puede marcar la colaboración como enviada.",
+        )
+        return redirect("projects:project_detail", project_id=project.id)
+
+    case_id = str(project.bonita_case_id)
+    client = BonitaClient(role="COLABORADORA")
+
+    try:
+        client.set_case_var(case_id, "idCompromiso", commitment_id, type_hint="java.lang.Long")
+    except Exception as e:
+        messages.error(
+            request,
+            f"No se pudo registrar el compromiso en Bonita: {e}",
+        )
+        return redirect("projects:project_detail", project_id=project.id)
+
+    try:
+        uid = client.get_session_user_id()
+        ok = client.execute_task_with_retry(case_id, task_name="Enviar colaboración",  user_id=uid)
+        if not ok:
+            messages.error(
+                request,
+                "No se pudo completar la tarea 'Enviar colaboración' en Bonita.",
+            )
+            return redirect("projects:project_detail", project_id=project.id)
+    except Exception as e:
+        messages.error(
+            request,
+            f"Error al ejecutar la tarea 'Enviar colaboración' en Bonita: {e}",
+        )
+        return redirect("projects:project_detail", project_id=project.id)
+
+    try:
+        sync_ok, err = client.wait_for_cloud_sync(case_id, "cloudSyncOk")
+        if not sync_ok:
+            messages.warning(
+                request,
+                "La colaboración se marcó como enviada, "
+                "pero hubo un problema al sincronizar con la Cloud API.",
+            )
+        else:
+            messages.success(
+                request,
+                "La colaboración fue marcada como enviada y sincronizada correctamente "
+                "con la Cloud API.",
+            )
+    except Exception:
+        messages.info(
+            request,
+            "La colaboración fue marcada como enviada. "
+            "Si hubiera errores de sincronización, aparecerán en el panel de Bonita.",
+        )
+
+    return redirect("projects:project_detail", project_id=project.id)

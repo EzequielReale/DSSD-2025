@@ -17,6 +17,11 @@ urlpatterns = [
     path("observations/<int:observation_id>/resolve/",
          sol.resolve_observation, name="observation_resolve",
     ),
+    path("projects/<int:project_id>/analyze-commitment/",
+        sol.analyze_commitment, name="analyze_commitment",
+    ),
+    path("projects/<int:project_id>/execute/", sol.execute_project, name="execute_project"),
+
 
     # ONG COLABORADORA
     path("colab/projects/", col.collab_projects, name="collab_projects"),
@@ -30,6 +35,11 @@ urlpatterns = [
         col.offer_commitment,
         name="offer_commitment",
     ),
+    path(
+        "projects/<int:project_id>/commitments/<int:commitment_id>/fulfill/",
+        col.fulfill_commitment, name="fulfill_commitment",
+    ),
+
 
     # CONSEJO DIRECTIVO / GERENCIAL
     path(
