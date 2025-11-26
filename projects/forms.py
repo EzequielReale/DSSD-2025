@@ -50,6 +50,7 @@ class NeedItemForm(forms.Form):
         widget=forms.CheckboxInput(attrs={})
     )
 
+
 class StageForm(forms.ModelForm):
     """
     Formulario para agregar o editar una etapa del plan de trabajo de un proyecto."""
@@ -65,8 +66,6 @@ class StageForm(forms.ModelForm):
 
 
 class ObservationForm(forms.ModelForm):
-    """
-    Formulario para agregar una observación del Consejo Directivo a un proyecto."""
     class Meta:
         model = Observation
         fields = ['text']

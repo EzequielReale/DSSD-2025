@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load group_tags %}
 {% block title %}Proyecto {{ project.name|default:"Cargando..." }}{% endblock %}
 
 {% block extra_head %}
@@ -243,7 +244,7 @@
     {% endfor %}
     {% endif %}
 
-    <!-- Sección de Necesidades (Datos desde Bonita) -->
+    <!-- Sección de Necesidades -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Necesidades del Proyecto</h3>
@@ -302,7 +303,7 @@
         </div>
     </div>
 
-    <!-- Etapas -->
+    <!-- Sección de Etapas -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Etapas</h3>
@@ -336,7 +337,7 @@
             </table>
         </div>
 
-        {% if is_creador %}
+        {% if request.user|has_group:"ONG solicitante" %}
         <div class="form-card">
             <h4>Agregar Nueva Etapa</h4>
             <form action="{% url 'projects:add_stage' project.id %}" method="post">
@@ -350,7 +351,7 @@
         {% endif %}
     </div>
 
-    <!-- Observaciones -->
+    <!-- Sección de Observaciones -->
     <div class="card">
         <div class="section-header">
             <h3 class="section-title">Observaciones del Consejo</h3>
@@ -367,7 +368,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for obs in observations %}
+                {% for obs in observations %}
                     <tr>
                         <td>{{ obs.observer_label }}</td>
                         <td>

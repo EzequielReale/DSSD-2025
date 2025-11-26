@@ -92,11 +92,9 @@
 
         <div id="need-list" class="need-list">
             {% for f in formset.forms %}
-            {# Siempre: management y otros hidden del form #}
             {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
 
             {% if f.DELETE.value %}
-            {# Mantener la eliminación entre POSTs: incluimos DELETE checkeado pero sin mostrar la tarjeta #}
             <div style="display:none">
                 {{ f.DELETE }}
             </div>
@@ -126,7 +124,6 @@
                 </div>
 
                 <div class="need-foot">
-                    {# DELETE oculto para poder marcarla desde el botón "Quitar" #}
                     <label style="display:none">{{ f.DELETE }}</label>
                     <button type="button" class="btn btn-remove">Quitar</button>
                 </div>
@@ -141,7 +138,6 @@
             <button class="btn btn-ghost" type="button" id="need-add">+ Agregar necesidad</button>
         </div>
 
-        <!-- Template (empty_form) -->
         <template id="need-template">
             <div class="need-card" data-active="1">
                 {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}

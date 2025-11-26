@@ -8,14 +8,13 @@ class BonitaClient:
     Maneja autenticación, instanciación y recuperación de variables.
     """
 
-    def __init__(self):
+    def __init__(self, role: str = "SOLICITANTE"):
         self.base = settings.BONITA_URL.rstrip("/")
-        self.user = settings.BONITA_USER
+        self.user = settings.BONITA_USERS.get(role, settings.BONITA_USER_SOLICITANTE)
         self.password = settings.BONITA_PASS
         self.s = requests.Session()
         self.csrf = None
 
-    # ---------- auth ----------
     def _ensure_csrf(self):
         """Se asegura de tener una sesión válida y token CSRF."""
         if self.csrf:
@@ -197,7 +196,6 @@ class BonitaClient:
         resp.raise_for_status()
         return True
 
-    # ---------- user/tasks ----------
     def get_session_user_id(self) -> str:
         """
         Intenta /API/system/session; si falla (500, etc.), busca por username:

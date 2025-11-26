@@ -77,6 +77,7 @@ class CollaborationRequest(models.Model):
         max_length=12, choices=RequestStatus.choices,
         default=RequestStatus.OPEN, db_index=True
     )
+    needs_help = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -169,21 +170,3 @@ class Observation(models.Model):
 
     def __str__(self):
         return f"Observación para {self.project.name}"
-
-# class User(models.Model):
-#     """
-#     Usuario del sistema.
-#     """
-    
-#     name = models.CharField(max_length=200)
-#     email = models.EmailField(unique=True)
-#     password = models.CharField(max_length=128)  # Hasheada en lo posible
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     def __str__(self): 
-#         return f"{self.name} <{self.email}>"
-
-#     class Meta:
-#         db_table = "users"
-#         ordering = ['-created_at']

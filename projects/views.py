@@ -23,22 +23,32 @@ from .services import ProjectService
 service = ProjectService()
 
 def _wants_json(request):
+    """
+    Devuelve True si el cliente pidió JSON explícitamente:
+    - parámetro ?format=json
+    - header Accept: application/json
+    """
     return (
             request.GET.get("format") == "json"
             or "application/json" in (request.headers.get("Accept") or "")
     )
 
+
 def is_ong_solicitante(user):
-    """Verifica si el usuario está en el grupo 'ONG solicitante'"""
-    if user.is_authenticated:
-        return user.groups.filter(name='ONG solicitante').exists()
-    return False
+    """Verifica si el usuario está en el grupo 'ONG solicitante'."""
+    return (
+            user.is_authenticated
+            and user.groups.filter(name='ONG solicitante').exists()
+    )
+
 
 def is_ong_colaboradora(user):
-    """Verifica si el usuario está en el grupo 'ONGs colaboradoras'"""
-    if user.is_authenticated:
-        return user.groups.filter(name='ONGs colaboradoras').exists()
-    return False
+    """Verifica si el usuario está en el grupo 'ONGs colaboradoras'."""
+    return (
+            user.is_authenticated
+            and user.groups.filter(name='ONGs colaboradoras').exists()
+    )
+
 
 def is_consejo_directivo(user):
     """Verifica si el usuario está en el grupo 'Consejo Directivo'"""
