@@ -131,7 +131,7 @@
             <div>
                 <div class="field-label">ONG colaboradora</div>
                 <div class="field-value">
-                    {{ compromiso.actor_label|default:"ONG colaboradora" }}
+                    {{ compromiso.ong_name|default:"ONG colaboradora" }}
                 </div>
 
                 <div class="field-label">Descripción del compromiso</div>
@@ -146,12 +146,6 @@
                     </div>
                 {% endif %}
 
-                {% if compromiso.status %}
-                    <div class="field-label">Estado en la Cloud</div>
-                    <div class="field-value">
-                        <span class="badge">{{ compromiso.status }}</span>
-                    </div>
-                {% endif %}
             </div>
 
             <form method="post" class="actions">

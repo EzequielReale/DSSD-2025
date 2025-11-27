@@ -4,12 +4,15 @@ import json
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
-
+from django.db.models import Prefetch
 from ProjectPlanning.decorators import require_user_passes_test
 from integrations.bonita_client import BonitaClient
 
 from .views import is_ong_colaboradora
-from .models import Project, CollaborationRequest, RequestStatus
+from .models import (
+    Project, CollaborationRequest, Commitment,
+    RequestStatus, ProjectStatus, CommitmentStatus
+)
 
 
 @require_user_passes_test(is_ong_colaboradora)
@@ -141,6 +144,12 @@ def collab_project_needs(request, project_id):
     client = BonitaClient(role="COLABORADORA")
 
     try:
+        cloud_ok = client.get_case_variable(case_id, "cloudSyncOk")
+
+        if not cloud_ok:
+            msg = "Error al sincronizar necesidades desde la Cloud API. "
+            raise RuntimeError(msg)
+
         needs_val = client.get_case_variable(case_id, "necesidadesJson")
 
         if not needs_val:
@@ -151,8 +160,7 @@ def collab_project_needs(request, project_id):
             )
             needs_list = []
         else:
-            # El BonitaClient ya intenta parsear JSON si es texto.
-            # Por las dudas, normalizamos a list de dicts.
+
             if isinstance(needs_val, list):
                 needs_list = needs_val
             else:
@@ -175,8 +183,9 @@ def collab_project_needs(request, project_id):
 
 @require_user_passes_test(is_ong_colaboradora)
 @require_http_methods(["POST"])
-def offer_commitment(request, project_id, request_id):
+def offer_commitment(request, project_id, need_id):
     project = get_object_or_404(Project, pk=project_id)
+    need = get_object_or_404(CollaborationRequest, cloud_id=need_id, project=project)
 
     if not project.bonita_case_id:
         messages.error(
@@ -189,12 +198,24 @@ def offer_commitment(request, project_id, request_id):
     case_id = str(project.bonita_case_id)
     client = BonitaClient(role="COLABORADORA")
 
-    desc = request.POST.get("description", "")
-    ong = request.POST.get("ong_name", "")
+    desc = (request.POST.get("description", "") or "").strip()
+    ong = (request.POST.get("ong_name", "") or "").strip()
+
+    if not ong:
+        messages.error(request, "Debés indicar el nombre de la ONG.")
+        return redirect("projects:collab_project_needs", project_id=project_id)
+
+    if not desc:
+        messages.error(request, "Debés ingresar una breve descripción del compromiso.")
+        return redirect("projects:collab_project_needs", project_id=project_id)
 
     try:
-        client.set_case_var(case_id,"idPedido",str(request_id),type_hint="java.lang.Integer")
-        client.set_case_var(case_id,"descCompromiso",desc,type_hint="java.lang.String")
+        client.set_case_var(case_id, "idPedido", int(need_id), type_hint="java.lang.Integer")
+        client.set_case_var(case_id, "actorLabel",
+            request.user.get_full_name() or request.user.username,
+            type_hint="java.lang.String",
+        )
+        client.set_case_var(case_id, "descCompromiso", desc, type_hint="java.lang.String")
         client.set_case_var(case_id, "nombreONGColab", ong, type_hint="java.lang.String")
 
 
@@ -204,26 +225,36 @@ def offer_commitment(request, project_id, request_id):
             task_name="Enviar compromiso de colaboración",
             user_id=user_id,
         )
+        if not ok:
+            raise RuntimeError("No se pudo completar la tarea en Bonita.")
 
-        cloud_ok = False
-        if ok:
-            try:
-                cloud_ok = bool(client.get_case_variable(case_id, "cloudSyncOk"))
-            except Exception:
-                cloud_ok = False
+        # Esperar a que el conector de salida haga el POST a la Cloud API
+        sync_ok, sync_err = client.wait_for_cloud_sync(case_id, "cloudSyncOk")
+        if not sync_ok:
+            raise RuntimeError(
+                f"Error al sincronizar con la Cloud API: {sync_err or 'sin detalles'}"
+            )
 
-        if not ok or not cloud_ok:
-            messages.error(
-                request,
-                "No se pudo registrar el compromiso en la Cloud API. "
-                "Intente nuevamente más tarde.",
-            )
-        else:
-            messages.success(
-                request,
-                "Tu compromiso se registró correctamente en la Cloud API. "
-                "¡Gracias por colaborar! 😊",
-            )
+        # Actualizar la BD local: reservar el pedido
+        need.status = RequestStatus.RESERVED
+        need.save(update_fields=["status"])
+
+        if project.status == ProjectStatus.OPEN:
+            project.status = ProjectStatus.WITH_COMMITMENTS
+            project.save(update_fields=["status"])
+
+        Commitment.objects.create(
+            request=need,
+            actor_label=ong,
+            description=desc,
+            status=CommitmentStatus.ACTIVE
+        )
+
+        messages.success(
+            request,
+            "Tu compromiso se registró correctamente en la Cloud API. "
+            "¡Gracias por colaborar!",
+        )
 
     except Exception as e:
         messages.error(
@@ -231,19 +262,78 @@ def offer_commitment(request, project_id, request_id):
             f"Error al registrar el compromiso en Bonita: {e}",
         )
 
-    return redirect("projects:collab_project_needs", project_id=project_id)
+    return redirect("projects:collab_projects")
+
+
+@require_user_passes_test(is_ong_colaboradora)
+@require_http_methods(["GET"])
+def my_commitments(request):
+    """
+    Lista los compromisos de colaboración vigentes (ACTIVE),
+    separando:
+      - los que ya pueden enviar colaboración (proyecto en EXECUTING),
+      - los que aún están esperando que el proyecto se ejecute.
+    """
+
+    # Por simplicidad, mostramos todos los ACTIVE.
+    # Si después querés filtrar por usuario, habría que agregar
+    # un campo en Commitment (created_by_user, por ejemplo).
+    qs = (
+        Commitment.objects
+        .select_related("request__project")
+    )
+
+    active = qs.filter(status=CommitmentStatus.ACTIVE)
+    ready_to_fulfill = []
+    waiting_execution = []
+
+    for c in active:
+        project = c.request.project
+        item = {
+            "commitment": c,
+            "project": project,
+            "request": c.request,
+        }
+        if project.status == ProjectStatus.EXECUTING:
+            ready_to_fulfill.append(item)
+        else:
+            waiting_execution.append(item)
+
+    context = {
+        "ready_to_fulfill": ready_to_fulfill,
+        "waiting_execution": waiting_execution,
+        "fulfilled_commitments": qs.filter(status=CommitmentStatus.FULFILLED),
+        "rejected_commitments": qs.filter(status=CommitmentStatus.CANCELLED),
+    }
+    return render(request, "projects/my_commitments.html", context)
 
 
 @require_user_passes_test(is_ong_colaboradora)
 @require_http_methods(["POST"])
 def fulfill_commitment(request, project_id, commitment_id):
-    """
-    Tarea 'Enviar colaboración' (ONG colaboradora).
-
-    Permite que la ONG colaboradora confirme que efectivamente
-    entregó la colaboración asociada al compromiso actual.
-    """
     project = get_object_or_404(Project, pk=project_id)
+
+    if project.status != ProjectStatus.EXECUTING:
+        messages.error(
+            request,
+            "Todavía no podés enviar esta colaboración. "
+            "El proyecto no se encuentra en ejecución.",
+        )
+        return redirect("projects:my_commitments")
+
+    commitment = get_object_or_404(
+        Commitment,
+        pk=commitment_id,
+        request__project=project,
+    )
+
+    # Solo compromisos activos
+    if commitment.status != CommitmentStatus.ACTIVE:
+        messages.error(
+            request,
+            "Este compromiso ya no se encuentra activo o ya fue enviado.",
+        )
+        return redirect("projects:my_commitments")
 
     if not project.bonita_case_id:
         messages.error(
@@ -251,55 +341,69 @@ def fulfill_commitment(request, project_id, commitment_id):
             "Este proyecto no tiene asociado un caso en Bonita. "
             "No se puede marcar la colaboración como enviada.",
         )
-        return redirect("projects:project_detail", project_id=project.id)
+        return redirect("projects:my_commitments")
 
     case_id = str(project.bonita_case_id)
     client = BonitaClient(role="COLABORADORA")
 
     try:
-        client.set_case_var(case_id, "idCompromiso", commitment_id, type_hint="java.lang.Long")
+        client.set_case_var(
+            case_id,
+            "idCompromiso",
+            int(commitment_id),
+            type_hint="java.lang.Long",
+        )
     except Exception as e:
         messages.error(
             request,
             f"No se pudo registrar el compromiso en Bonita: {e}",
         )
-        return redirect("projects:project_detail", project_id=project.id)
+        return redirect("projects:my_commitments")
 
+    # 2) Ejecutar tarea "Enviar colaboración" en Bonita
     try:
-        uid = client.get_session_user_id()
-        ok = client.execute_task_with_retry(case_id, task_name="Enviar colaboración",  user_id=uid)
+        user_id = client.get_session_user_id()
+        ok = client.execute_task_with_retry(
+            case_id,
+            task_name="Enviar colaboración",
+            user_id=user_id,
+        )
         if not ok:
             messages.error(
                 request,
                 "No se pudo completar la tarea 'Enviar colaboración' en Bonita.",
             )
-            return redirect("projects:project_detail", project_id=project.id)
+            return redirect("projects:my_commitments")
     except Exception as e:
         messages.error(
             request,
             f"Error al ejecutar la tarea 'Enviar colaboración' en Bonita: {e}",
         )
-        return redirect("projects:project_detail", project_id=project.id)
+        return redirect("projects:my_commitments")
 
+    # 3) Esperar a que el conector REST marque cloudSyncOk
     try:
         sync_ok, err = client.wait_for_cloud_sync(case_id, "cloudSyncOk")
         if not sync_ok:
             messages.warning(
                 request,
-                "La colaboración se marcó como enviada, "
+                "La colaboración se envió en Bonita, "
                 "pero hubo un problema al sincronizar con la Cloud API.",
             )
         else:
+            commitment.status = CommitmentStatus.FULFILLED
+            commitment.save(update_fields=["status"])
+
             messages.success(
                 request,
-                "La colaboración fue marcada como enviada y sincronizada correctamente "
-                "con la Cloud API.",
+                "La colaboración fue marcada como enviada y sincronizada "
+                "correctamente con la Cloud API.",
             )
     except Exception:
         messages.info(
             request,
-            "La colaboración fue marcada como enviada. "
-            "Si hubiera errores de sincronización, aparecerán en el panel de Bonita.",
+            "La colaboración fue enviada en Bonita. "
+            "Si hubiera errores de sincronización, aparecerán en Bonita.",
         )
 
-    return redirect("projects:project_detail", project_id=project.id)
+    return redirect("projects:my_commitments")

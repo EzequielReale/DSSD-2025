@@ -238,25 +238,30 @@ class BonitaClient:
         Espera a que el conector de Cloud API termine y setee cloudSyncOk / cloudSyncError.
         Devuelve (ok: bool, error_msg: str | None).
         """
+        case_id = str(case_id)
+
+        last_val = None
         for attempt in range(max_attempts):
             try:
                 ok = self.get_case_variable(case_id, ok_var)
             except RequestException:
                 ok = None
 
-            # Bonita puede devolver null o la string "null"
-            if ok is None or str(ok).lower() == "null":
+            last_val = ok
+            val_str = str(ok).strip().lower()
+
+            print(f"[Bonita] {case_id}.{ok_var} = {ok!r} (intento {attempt+1}/{max_attempts})")
+
+            if ok is None or val_str in ("null", "false", ""):
                 time.sleep(delay)
                 continue
 
-            print(f"[Bonita] {case_id}.{ok_var} = {ok!r}")
-
-            if str(ok).lower() == "true":
+            if val_str == "true":
                 return True, None
 
-            return False, "Error desconocido en sincronización con Cloud API."
+            time.sleep(delay)
 
-        return False, f"Timeout esperando respuesta del conector ({max_attempts * delay}s)"
+        return False, f"Timeout esperando {ok_var} == true (último valor: {last_val!r})"
 
 
 
@@ -370,7 +375,7 @@ class BonitaClient:
         raise RuntimeError(f"No se pudo abortar/eliminar case {case_id}: {r.status_code} {r.text}")
 
 
-    def execute_task_with_retry(self, case_id, task_name, user_id, max_retries: int = 10, delay: float = 0.3) -> bool:
+    def execute_task_with_retry(self, case_id, task_name, user_id, max_retries: int = 5, delay: float = 0.3) -> bool:
         """
         Ejecuta una tarea humana de Bonita con pequeños reintentos.
         Necesario porque la tarea puede estar en 'initializing' antes de pasar a 'ready'.
