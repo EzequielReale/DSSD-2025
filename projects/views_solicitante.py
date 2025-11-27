@@ -25,6 +25,7 @@ from .views import is_ong_solicitante
 from .services import ProjectService
 
 service = ProjectService()
+client_solicitante = BonitaClient(role="SOLICITANTE")
 
 
 @require_user_passes_test(is_ong_solicitante)
@@ -257,25 +258,31 @@ def add_stage(request, project_id: int):
 
 @require_user_passes_test(is_ong_solicitante)
 @require_http_methods(["POST"])
-def resolve_observation(request, observation_id: int):
+def fix_observation(request, project_id: int, observation_id: int):
     """
-    ONG solicitante marca una observación como resuelta.
+    Resuelve una observación.
     """
-    obs = get_object_or_404(
-        Observation.objects.select_related("project"),
-        pk=observation_id,
-        project__created_by_user=request.user,
-    )
+    try:
+        observation = get_object_or_404(Observation, pk=observation_id)
+        project = observation.project
+        
+        success = client_solicitante.execute_task(
+            case_id=observation.project.monitoring_case_id,
+            task_name="Resolver problemas",
+            user_id=client_solicitante.get_session_user_id(),
+        )
 
-    if not obs.is_resolved:
-        obs.is_resolved = True
-        obs.resolved_at = timezone.now()
-        obs.save()
-        messages.success(request, "Observación marcada como resuelta.")
-    else:
-        messages.info(request, "La observación ya estaba resuelta.")
+        observation.resolved = True
+        observation.save()
+        project.monitoring_case_id = None
+        project.has_monitoring = False
+        project.save()
+        
+        messages.success(request, "Observación resuelta correctamente.")
+    except Exception as e:
+        messages.error(request, f"Error al resolver la observación: {e}")
 
-    return redirect("projects:project_detail", project_id=obs.project_id)
+    return redirect("projects:project_detail", project_id=project_id)
 
 
 @require_user_passes_test(is_ong_solicitante)

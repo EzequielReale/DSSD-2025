@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Métricas de Ciclo de Vida</h2>
+    <p class="text-muted">Tiempo promedio desde Alta hasta Ejecución/Fin por mes.</p>
+
+    <div class="card p-4">
+        {% for dato in datos_grafico %}
+        <div class="mb-3">
+            <div class="d-flex justify-content-between">
+                <strong>{{ dato.mes }}</strong>
+                <span>{{ dato.promedio }} días promedio</span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" 
+                     style="width: {% widthratio dato.promedio 1 2 %}%;" 
+                     aria-valuenow="{{ dato.promedio }}" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p>No hay suficientes datos históricos para generar métricas.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

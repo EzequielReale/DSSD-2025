@@ -400,7 +400,7 @@
                             {% elif n.status == "RESERVED" %}
                                 <span class="badge badge-reserved">⚠ Reservada</span>
                             {% else %}
-                                <span class="badge badge-pending">○ Pendiente</span>
+                            <span class="badge badge-pending">Completada</span>
                             {% endif %}
                         </td>
                         <td>{% if n.needs_help %}Si{% else %}No{% endif %}</td>
@@ -478,68 +478,67 @@
         <div class="table-wrapper">
             <table>
                 <thead>
-                <tr>
-                    <th>Observador</th>
-                    <th>Observación</th>
-                    <th>Fecha</th>
-                    <th>Estado</th>
-                    {% if request.user|has_group:"ONG solicitante" %}
-                        <th></th>
-                    {% endif %}
-                </tr>
+                    <tr>
+                        <th>Observador</th>
+                        <th>Observación</th>
+                        <th>Fecha</th>
+                        <th>Resuelta</th>
+                        <th>Acciones</th>
+                    </tr>
                 </thead>
                 <tbody>
                 {% for obs in observations %}
                     <tr>
+                        <td>{{ obs.observer_label }}</td>
                         <td>
-                            <span class="observer-badge">{{ obs.observer_label }}</span>
-                        </td>
-                        <td>{{ obs.text }}</td>
-                        <td>{{ obs.created_at|date:"Y-m-d H:i" }}</td>
-                        <td>
-                            {% if obs.is_resolved %}
-                                <span class="badge badge-completed">Resuelta</span>
+                            {% if obs.text|length > 30 %}
+                            <details>
+                                <summary>{{ obs.text|slice:":30" }}...</summary>
+                                <p style="margin-top: 0.3rem; white-space: pre-wrap;">{{ obs.text }}</p>
+                            </details>
                             {% else %}
-                                <span class="badge badge-pending">Pendiente</span>
+                            {{ obs.text }}
                             {% endif %}
                         </td>
-                        {% if request.user|has_group:"ONG solicitante" %}
-                            <td>
-                                {% if not obs.is_resolved %}
-                                    <form method="post" style="display: inline;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="resolve_observation_id" value="{{ obs.id }}">
-                                        <button type="submit" class="btn">Marcar resuelta</button>
-                                    </form>
-                                {% endif %}
-                            </td>
-                        {% endif %}
+                        <td>{{ obs.created_at|date:"d-m-Y" }}</td>
+                        <td>
+                            {% if obs.resolved %}
+                            <span class="badge badge-ok">✅</span>
+                            {% else %}
+                            <span class="badge badge-neutral">❌</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if is_creador and not obs.resolved %}
+                            <form action="{% url 'projects:fix_observation' project.id obs.id %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary">Marcar como resuelta</button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="{% if request.user|has_group:'ONG solicitante' %}5{% else %}4{% endif %}" class="empty-message">
-                            No hay observaciones.
+                        <td colspan="3">
+                            <div class="empty-state">No hay observaciones.</div>
                         </td>
                     </tr>
-                {% endfor %}
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        {% if request.user|has_group:"Consejo Directivo" %}
-            <hr>
-            <h3>Cargar Observación</h3>
-            <form method="post">
+        {% if is_consejo %}
+        <div class="form-card">
+            <h4>Cargar Observación</h4>
+            <form action="{% url 'projects:add_observation' project.id %}" method="post">
                 {% csrf_token %}
-                <p><strong>Observador:</strong> Consejo Directivo</p>
-                {{ observation_form.text.label_tag }}
-                {{ observation_form.text }}
+                {{ observation_form.as_p }}
                 <div class="actions">
-                    <button type="submit" name="add_observation" class="btn btn-primary">
-                        Guardar Observación
-                    </button>
+                    <button type="submit" class="btn btn-primary">Guardar Observación</button>
                 </div>
             </form>
+        </div>
         {% endif %}
     </div>
 

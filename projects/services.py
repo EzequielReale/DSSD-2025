@@ -66,3 +66,4 @@ class ProjectService:
                         all_needs.append(r)
 
         return all_needs
+        

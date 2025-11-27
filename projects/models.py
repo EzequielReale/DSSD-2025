@@ -41,6 +41,8 @@ class Project(models.Model):
     end_date = models.DateField()
     created_by_ong = models.CharField(max_length=200, blank=True)
     bonita_case_id = models.CharField(max_length=64, blank=True, null=True)
+    monitoring_case_id = models.CharField(max_length=64, blank=True, null=True)
+    has_monitoring = models.BooleanField(default=False)
     
     created_by_user = models.ForeignKey(
         User, 
@@ -166,10 +168,8 @@ class Observation(models.Model):
     
     observer_label = models.CharField(max_length=150, help_text="Nombre del Consejo o supervisor")
     text = models.TextField(help_text="Descripción de la observación o mejora")
-
-    is_resolved = models.BooleanField(default=False)
-    resolved_at = models.DateTimeField(null=True, blank=True)
-
+    resolved = models.BooleanField(default=False)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

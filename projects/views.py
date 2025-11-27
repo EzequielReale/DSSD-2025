@@ -1,8 +1,29 @@
-from django.http import JsonResponse
+import json
+import time
+from decimal import Decimal
+
+from django.conf import settings
+from django.forms import formset_factory
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
+from django.http import JsonResponse, Http404
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Count, Q
+from django.utils.dateformat import format as dfmt
+from django.contrib.auth.decorators import user_passes_test
+
 from ProjectPlanning.decorators import require_user_passes_test
-from django.shortcuts import render, get_object_or_404
-from .models import Project, RequestStatus
-from .forms import StageForm, ObservationForm
+
+
+from .forms import ProjectModelForm, NeedItemForm, StageForm, ObservationForm
+from .models import Project, CollaborationRequest, Stage, Observation, RequestStatus
+from integrations.bonita_client import BonitaClient
+from .services import ProjectService
+
+service = ProjectService()
 
 def _wants_json(request):
     """
@@ -64,7 +85,9 @@ def projects_list(request):
     return render(
         request,
         "projects/projects.html",
-        {"projects": projects_qs},
+        {"projects": projects_qs,
+        "is_consejo": is_consejo_directivo(request.user),
+        },
     )
 
 
@@ -129,5 +152,39 @@ def project_detail(request, project_id: int):
         "observation_form": ObservationForm(),
         "needs_list": q_needs,
         "include_all_needs": include_all,
+        "is_consejo": is_consejo_directivo(request.user),
+        "is_creador": (request.user == project.created_by_user)
     }
     return render(request, "projects/project_detail.html", context)
+
+# @login_required
+# def project_detail(request, project_id):
+#     """
+#     Detalle completo.
+#     Usa el servicio para mezclar datos locales con datos de Bonita.
+#     """
+#     full_project = service.get_full_project(project_id)
+    
+#     if not full_project:
+#         messages.error(request, "El proyecto no existe.")
+#         return redirect('projects:projects_list')
+
+#     project = full_project['local']
+#     needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
+
+#     stage_form = StageForm()
+#     observation_form = ObservationForm()
+
+#     return render(request, "projects/project_detail.html", {
+#         "project": project,
+#         "needs_list": needs_remote,
+#         "stages": project.stages.all(),
+#         "observations": project.observations.all(),
+#         "stage_form": stage_form,
+#         "observation_form": observation_form,
+#         # Permisos
+#         "is_consejo": is_consejo_directivo(request.user),
+#         "is_creador": (request.user == project.created_by_user)
+#     })
+
+

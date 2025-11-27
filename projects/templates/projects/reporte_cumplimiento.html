@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Reporte de Cumplimiento de Plazos</h2>
+    <p class="text-muted">Auditoría de tiempos de resolución de observaciones (Plazo máx: 5 días)</p>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Proyecto</th>
+                <th>Observación</th>
+                <th>Fecha Inicio (BD)</th>
+                <th>Fecha Fin (Bonita)</th>
+                <th>Días Tardados</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in reporte %}
+            <tr>
+                <td>{{ item.proyecto }}</td>
+                <td>{{ item.observacion }}</td>
+                <td>{{ item.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                <td>{{ item.fecha_fin|date:"d/m/Y H:i" }}</td>
+                <td>{{ item.dias_tardados }} días</td>
+                <td>
+                    {% if item.cumple_plazo %}
+                        <span class="badge bg-success">En fecha</span>
+                    {% else %}
+                        <span class="badge bg-danger">Incumplimiento</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No hay observaciones resueltas para analizar.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -79,10 +79,15 @@ class ObservationForm(forms.ModelForm):
     class Meta:
         model = Observation
         fields = ['text']
-        labels = {"Observación": ""}
+        labels = {
+            'text': 'Observación:',
+        }
         widgets = {
             "text": forms.Textarea(attrs={"rows": 3, "placeholder": "Escriba la observación o sugerencia"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class FinalReportForm(forms.ModelForm):

@@ -163,7 +163,7 @@
                 <th>Inicio</th>
                 <th>Fin</th>
                 <th>Estado</th>
-                <th></th>
+                <th>Acciones</th>
             </tr>
             </thead>
             <tbody id="rows">
@@ -174,7 +174,16 @@
                     <td>{{ p.end_date|date:"Y-m-d" }}</td>
                     <td>{{ p.get_status_display}}</td>
                     <td>
-                        <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
+                        {% if is_consejo %}
+                            {% if not p.has_monitoring %}
+                            <a href="{% url 'projects:start_monitoring' p.id %}" class="btn btn-sm" title="Iniciar Monitoreo">
+                                ▶ Iniciar Monitoreo
+                            </a>
+                            {% endif %}
+                        {%else%}
+                            <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
+                        {% endif %}
+
                     </td>
                 </tr>
                 {% empty %}
@@ -182,7 +191,7 @@
                     <td colspan="4">
                         <div class="empty-state">
                             <div class="empty-state-icon">📋</div>
-                            <div>No hay proyectos todavía</div>
+                            <div>No hay proyectos</div>
                         </div>
                     </td>
                 </tr>
@@ -191,5 +200,4 @@
         </table>
     </div>
 </div>
-
 {% endblock %}
