@@ -193,6 +193,8 @@ def lifecycle_metrics(request):
         except Exception:
             caso_archivado = None
         
+        print(caso_archivado)
+
         if caso_archivado:
             # Si terminó, usamos la fecha de archivo del caso
             end_date = parser.parse(caso_archivado['end_date'])
@@ -202,6 +204,8 @@ def lifecycle_metrics(request):
                 tareas_ejecucion = client_directivo.get_archived_human_tasks(proj.bonita_case_id, "Ejecución del proyecto")
             except Exception:
                 tareas_ejecucion = []
+
+            print(tareas_ejecucion)
 
             if tareas_ejecucion:
                 end_date = parser.parse(tareas_ejecucion[0]['archivedDate'])
@@ -240,6 +244,8 @@ def stalled_projects_monitor(request):
     proyectos_activos = Project.objects.filter(
         status__in=['OPEN', 'WITH_COMMITMENTS', 'READY', 'EXECUTING'])
     detenidos = []
+
+    print(proyectos_activos)
     
     ahora = timezone.now()
 
@@ -252,6 +258,8 @@ def stalled_projects_monitor(request):
             tareas_activas = client_directivo.get_active_tasks(proj.bonita_case_id)
         except Exception:
             tareas_activas = []
+        
+        print(tareas_activas)
         
         for tarea in tareas_activas:
             # La fecha de asignación viene como string, la convertimos
@@ -281,6 +289,9 @@ def stalled_projects_monitor(request):
                     'responsable': usuario_nombre,
                     'horas_detenido': int(tiempo_detenido.total_seconds() / 3600)
                 })
+
+    print(detenidos)
     
     context = {'proyectos_detenidos': detenidos}
     return render(request, template_name, context)
+    
