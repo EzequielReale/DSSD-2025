@@ -1,41 +1,169 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Reporte de Cumplimiento de Plazos</h2>
-    <p class="text-muted">Auditoría de tiempos de resolución de observaciones (Plazo máx: 5 días)</p>
+<style>
+    .timeline-connector {
+        position: relative;
+        padding-left: 20px;
+    }
 
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Proyecto</th>
-                <th>Observación</th>
-                <th>Fecha Inicio (BD)</th>
-                <th>Fecha Fin (Bonita)</th>
-                <th>Días Tardados</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in reporte %}
-            <tr>
-                <td>{{ item.proyecto }}</td>
-                <td>{{ item.observacion }}</td>
-                <td>{{ item.fecha_inicio|date:"d/m/Y H:i" }}</td>
-                <td>{{ item.fecha_fin|date:"d/m/Y H:i" }}</td>
-                <td>{{ item.dias_tardados }} días</td>
-                <td>
-                    {% if item.cumple_plazo %}
-                        <span class="badge bg-success">En fecha</span>
-                    {% else %}
-                        <span class="badge bg-danger">Incumplimiento</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6">No hay observaciones resueltas para analizar.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    .timeline-connector::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 5px;
+        bottom: 5px;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+
+    .timeline-dot {
+        position: absolute;
+        left: -4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #dee2e6;
+    }
+
+    .timeline-dot.start {
+        top: 5px;
+        background-color: #0d6efd;
+    }
+
+    .timeline-dot.end {
+        bottom: 5px;
+        background-color: #198754;
+    }
+
+    .card-hover {
+        transition: all 0.2s ease-in-out;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+    }
+</style>
+
+<div class="container mt-5">
+    <!-- Header -->
+    <div class="row mb-5 align-items-end">
+        <div class="col-md-8">
+            <h2 class="fw-bold display-6 mb-1">Reporte de Cumplimiento</h2>
+            <p class="text-muted lead mb-0 fs-6">Seguimiento de tiempos de resolución de observaciones (SLA: 5 días)</p>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-light border-0 py-3 px-4">
+            <div class="row align-items-center">
+                <div class="col text-uppercase text-muted small fw-bold">Detalle de Observaciones</div>
+                <div class="col-auto">
+                    <span class="badge bg-white text-secondary border">{{ reporte|length }} Registros</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-white border-bottom">
+                    <tr>
+                        <th class="ps-4 py-4 text-secondary fw-bold small text-uppercase" style="width: 35%;">Proyecto /
+                            Observación</th>
+                        <th class="py-4 text-secondary fw-bold small text-uppercase" style="width: 25%;">Ciclo de Vida
+                        </th>
+                        <th class="py-4 text-center text-secondary fw-bold small text-uppercase" style="width: 15%;">
+                            Duración</th>
+                        <th class="py-4 text-end pe-4 text-secondary fw-bold small text-uppercase" style="width: 25%;">
+                            Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in reporte %}
+                    <tr>
+                        <td class="ps-4 py-3">
+                            <div class="d-flex align-items-start">
+                                <div class="me-3 mt-1 text-primary bg-primary bg-opacity-10 rounded p-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
+                                        class="bi bi-clipboard-data" viewBox="0 0 16 16">
+                                        <path
+                                            d="M4 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm2 2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm6.5.5a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h7z" />
+                                        <path
+                                            d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
+                                        <path
+                                            d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark mb-1">{{ item.proyecto }}</div>
+                                    <div class="text-muted small text-truncate"
+                                        style="max-width: 350px; line-height: 1.4;">
+                                        {{ item.observacion }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="timeline-connector py-1">
+                                <div class="timeline-dot start"></div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small" style="font-size: 0.75rem;">Inicio</span>
+                                    <span class="fw-semibold text-dark small">{{ item.fecha_inicio|date:"d/m/Y" }}</span>
+                                </div>
+                                <div class="timeline-dot end"></div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small" style="font-size: 0.75rem;">Cierre</span>
+                                    <span class="fw-semibold text-dark small">{{ item.fecha_fin|date:"d/m/Y" }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-inline-block text-center">
+                                <h4 class="fw-bold mb-0 text-dark">{{ item.dias_tardados }}</h4>
+                                <small class="text-muted text-uppercase" style="font-size: 0.65rem;">Días</small>
+                            </div>
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if item.cumple_plazo %}
+                            <div
+                                class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success px-3 py-2">
+                                <i class="bi bi-check-circle-fill me-2"></i>En Tiempo
+                            </div>
+                            {% else %}
+                            <div
+                                class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Demorado
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="py-4">
+                                <div class="mb-3 text-muted opacity-25">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor"
+                                        class="bi bi-clipboard-check" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd"
+                                            d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0z" />
+                                        <path
+                                            d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
+                                        <path
+                                            d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
+                                    </svg>
+                                </div>
+                                <h5 class="fw-bold text-secondary">Sin datos para auditar</h5>
+                                <p class="text-muted small mb-0">No se encontraron observaciones resueltas en el período
+                                    seleccionado.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}
