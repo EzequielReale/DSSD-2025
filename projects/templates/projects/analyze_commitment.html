@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Analizar donación{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+        .page-title {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .page-subtitle {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--ink-2);
+            font-weight: 400;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--brand);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+        .back-link:hover {
+            opacity: 0.7;
+        }
+        .card-body {
+            padding: 1.25rem 1.5rem;
+        }
+        .field-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-2);
+            margin-bottom: 0.15rem;
+        }
+        .field-value {
+            font-size: 0.95rem;
+            color: var(--ink);
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #eef2ff;
+            color: #3730a3;
+        }
+        .actions {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--ink-2);
+        }
+        .btn-outline:hover {
+            background: #f9fafb;
+        }
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.5rem;
+            }
+            .actions {
+                flex-direction: column;
+            }
+            .actions button {
+                width: 100%;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <a href="{% url 'projects:project_detail' project.id %}" class="back-link">
+            <span>←</span>
+            <span>Volver al proyecto</span>
+        </a>
+
+        <div class="page-header">
+            <h1 class="page-title">Analizar donación</h1>
+            <p class="page-subtitle">
+                Revisá el compromiso de colaboración recibido para este proyecto y decidí si lo aceptás o no.
+            </p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card-body">
+
+            {% if pedido_obj %}
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="field-label">Pedido asociado</div>
+                    <div class="field-value">
+                        {{ pedido_obj.title }} —
+                        <span class="badge">{{ pedido_obj.title }}</span>
+                    </div>
+                    {% if pedido_obj.description %}
+                        <div class="field-label">Descripción del pedido</div>
+                        <div class="field-value">{{ pedido_obj.description }}</div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="field-label">ID de pedido</div>
+                    <div class="field-value">#{{ id_pedido }}</div>
+                </div>
+            {% endif %}
+
+            <div>
+                <div class="field-label">ONG colaboradora</div>
+                <div class="field-value">
+                    {{ compromiso.ong_name|default:"ONG colaboradora" }}
+                </div>
+
+                <div class="field-label">Descripción del compromiso</div>
+                <div class="field-value">
+                    {{ compromiso.description|default:"Sin descripción" }}
+                </div>
+
+                {% if compromiso.amount %}
+                    <div class="field-label">Monto / cantidad ofrecida</div>
+                    <div class="field-value">
+                        {{ compromiso.amount }}
+                    </div>
+                {% endif %}
+
+            </div>
+
+            <form method="post" class="actions">
+                {% csrf_token %}
+                <button type="submit"
+                        name="action"
+                        value="accept"
+                        class="btn btn-primary">
+                    Aceptar compromiso
+                </button>
+
+                <button type="submit"
+                        name="action"
+                        value="reject"
+                        class="btn btn-outline">
+                    Rechazar
+                </button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

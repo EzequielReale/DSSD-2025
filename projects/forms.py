@@ -1,5 +1,5 @@
 from django import forms
-from .models import Project, Stage, Observation
+from .models import Project, Stage, Observation, FinalReport
 
 
 class ProjectModelForm(forms.ModelForm):
@@ -33,6 +33,10 @@ class NeedItemForm(forms.Form):
         ("MO",   "Mano de obra"),
         ("OTRO", "Otro"),
     ]
+    need_title = forms.CharField(
+        label="Título",
+        widget=forms.TextInput(attrs={"rows": 2,"placeholder": "Ingrese un título breve"
+        }))
     need_type = forms.ChoiceField(label="Tipo de necesidad", choices=NEED_CHOICES)
     need_description = forms.CharField(
         label="Detalle",
@@ -79,3 +83,31 @@ class ObservationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+
+class FinalReportForm(forms.ModelForm):
+    class Meta:
+        model = FinalReport
+        fields = [
+            "actual_start_date",
+            "actual_end_date",
+            "summary",
+            "contributions",
+            "difficulties",
+            "comments",
+        ]
+        widgets = {
+            "actual_start_date": forms.DateInput(attrs={"type": "date"}),
+            "actual_end_date": forms.DateInput(attrs={"type": "date"}),
+            "summary": forms.Textarea(attrs={"rows": 3}),
+            "contributions": forms.Textarea(attrs={"rows": 3}),
+            "difficulties": forms.Textarea(attrs={"rows": 3}),
+            "comments": forms.Textarea(attrs={"rows": 3}),
+        }
+        labels = {
+            "actual_start_date": "Fecha real de inicio",
+            "actual_end_date": "Fecha real de fin",
+            "summary": "Resumen",
+            "contributions": "Contribuciones",
+            "difficulties": "Dificultades",
+            "comments": "Comentarios",
+        }

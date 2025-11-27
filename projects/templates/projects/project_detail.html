@@ -1,325 +1,437 @@
 {% extends "base.html" %}
 {% load group_tags %}
+
 {% block title %}Proyecto {{ project.name|default:"Cargando..." }}{% endblock %}
 
 {% block extra_head %}
-<style>
-    .project-header {
-        position: relative;
-    }
+    <style>
+        .back-link {
+            display: inline-block;
+            color: var(--brand);
+            text-decoration: none;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
 
-    .project-title {
-        margin: 1rem 0 0.5rem 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
+        .back-link:hover {
+            color: var(--brand-600);
+        }
 
-    .project-description {
-        margin: 0 0 1.25rem 0;
-        color: var(--ink-2);
-        font-size: 1.05rem;
-        line-height: 1.6;
-    }
+        .project-header {
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: var(--card);
+            border-radius: var(--radius);
+        }
 
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 0.85rem;
-        margin-top: 1.25rem;
-    }
-
-    .stat-card {
-        background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-    }
-
-    .stat-label {
-        color: var(--ink-2);
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-        margin-bottom: 0.35rem;
-    }
-
-    .stat-value {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
-
-    .view-toggle-card {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        margin-top: 1rem;
-    }
-
-    .badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.35rem 0.75rem;
-        border-radius: 8px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border: 1px solid;
-    }
-
-    .badge-neutral {
-        background: #f3f4f6;
-        border-color: #e5e7eb;
-        color: var(--ink-2);
-    }
-
-    .badge-ok {
-        background: #d1fae5;
-        border-color: #86efac;
-        color: #065f46;
-    }
-
-    .badge-warn {
-        background: #fef3c7;
-        border-color: #fde68a;
-        color: #92400e;
-    }
-
-    .badge-pending {
-        background: #e0e7ff;
-        border-color: #c7d2fe;
-        color: #3730a3;
-    }
-
-    .view-link {
-        color: var(--brand);
-        text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: color 0.15s ease;
-    }
-
-    .view-link:hover {
-        color: var(--brand-600);
-        text-decoration: underline;
-    }
-
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.25rem;
-    }
-
-    .section-title {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
-
-    .table-wrapper {
-        overflow-x: auto;
-        margin-top: 1rem;
-    }
-
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-    }
-
-    .table thead {
-        background: #f9fafb;
-        border-bottom: 2px solid var(--line);
-    }
-
-    .table th {
-        padding: 0.85rem 1rem;
-        text-align: left;
-        font-weight: 600;
-        color: var(--ink-2);
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .table tbody tr {
-        border-bottom: 1px solid var(--line);
-        transition: background-color 0.15s ease;
-    }
-
-    .table tbody tr:hover {
-        background: #f9fafb;
-    }
-
-    .table tbody tr:last-child {
-        border-bottom: none;
-    }
-
-    .table td {
-        padding: 1rem;
-        color: var(--ink);
-    }
-
-    .table td:first-child {
-        font-weight: 500;
-        color: var(--ink-2);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--ink-2);
-    }
-
-    .empty-state-icon {
-        font-size: 3rem;
-        margin-bottom: 0.5rem;
-        opacity: 0.3;
-    }
-
-    @media (max-width: 768px) {
         .project-title {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
         }
 
-        .stats-grid {
-            grid-template-columns: 1fr;
+        .project-description {
+            color: var(--ink-2);
+            margin: 0.5rem 0;
         }
 
-    }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
 
-    .form-card {
-        background: #f9fafb;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1.25rem;
-        margin-top: 1.5rem;
-    }
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 0.85rem;
+            box-shadow: var(--shadow);
+        }
 
-    .form-card h4 {
-        margin: 0 0 1rem 0;
-    }
-</style>
+        .info-label {
+            font-size: 0.75rem;
+            color: var(--ink-2);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .card {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: #f9fafb;
+        }
+
+        th {
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--ink-2);
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        tbody tr:hover {
+            background: #fafafa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.65rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-reserved {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-pending {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .observer-badge {
+            background: var(--brand);
+            color: white;
+            padding: 0.25rem 0.65rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+        }
+
+        .toggle-link {
+            color: var(--brand);
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .toggle-link:hover {
+            text-decoration: underline;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.65rem 1.25rem;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 2px 8px rgba(45, 108, 223, 0.3);
+        }
+
+        .final-report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .report-item {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+        }
+
+        .report-label {
+            font-size: 0.8rem;
+            color: var(--ink-2);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.3px;
+        }
+
+        .report-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .report-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .report-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .report-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 0.75rem;
+        }
+
+        .report-text {
+            color: var(--ink-2);
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .report-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
-<div class="stack">
-    <div class="card project-header">
-        <a href="{% url 'projects:projects_list' %}" class="btn">← Volver</a>
+    <a href="javascript:history.back()" class="back-link">← Volver</a>
 
-        <h2 id="pname" class="project-title">{{ project.name }}</h2>
-        <p id="pdesc" class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Inicio</div>
-                <div class="stat-value">{{ project.start_date|date:"Y-m-d" }}</div>
+    <div class="project-header">
+        <h1 class="project-title">{{ project.name }}</h1>
+        <p class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
+        <p class="project-description"><strong>Estado:</strong> {{ project.get_status_display }}</p>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-label">Inicio</div>
+                <div class="info-value">{{ project.start_date|date:"Y-m-d" }}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Fin</div>
-                <div class="stat-value">{{ project.end_date|date:"Y-m-d" }}</div>
+            <div class="info-card">
+                <div class="info-label">Fin</div>
+                <div class="info-value">{{ project.end_date|date:"Y-m-d" }}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Caso Bonita</div>
-                <div class="stat-value">{{ project.bonita_case_id|default:"N/A" }}</div>
+            <div class="info-card">
+                <div class="info-label">Caso Bonita</div>
+                <div class="info-value">{{ project.bonita_case_id|default:"N/A" }}</div>
             </div>
         </div>
     </div>
 
     {% if messages %}
-    {% for message in messages %}
-    <div
-        class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
-        {{ message }}
-    </div>
-    {% endfor %}
+        <div class="stack">
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <!-- Sección de Necesidades -->
+    <div class="actions">
+        {% if project.status == "READY" %}
+            <form method="post" action="{% url 'projects:execute_project' project.id %}"  style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">
+                    Marcar proyecto en ejecución
+                </button>
+            </form>
+        {% endif %}
+
+        {% if project.status == "WITH_COMMITMENTS" %}
+            <form method="post" action="{% url 'projects:analyze_commitment' project.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn">
+                    Analizar donaciones
+                </button>
+            </form>
+        {% endif %}
+
+        {% if project.status == "EXECUTING" %}
+            <a href="{% url 'projects:final_report' project.id %}" class="btn btn-success" style="display: inline;">
+                Elaborar informe final
+            </a>
+        {% endif %}
+    </div>
+
+    {% if project.status == "FINISHED" and project.final_report %}
+        <div class="card">
+            <div class="final-report-header">
+                <h2 class="section-title">📋 Informe Final del Proyecto</h2>
+                <span class="badge badge-completed">Proyecto Finalizado</span>
+            </div>
+
+            <div class="report-grid">
+                <div class="report-item">
+                    <div class="report-label">Fecha real de inicio</div>
+                    <div class="report-value">{{ project.final_report.actual_start_date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="report-item">
+                    <div class="report-label">Fecha real de fin</div>
+                    <div class="report-value">{{ project.final_report.actual_end_date|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="report-section">
+                <h3 class="report-section-title">Resumen de resultados</h3>
+                <p class="report-text">{{ project.final_report.summary }}</p>
+            </div>
+
+            <div class="report-section">
+                <h3 class="report-section-title">Aportes recibidos</h3>
+                <p class="report-text">{{ project.final_report.contributions }}</p>
+            </div>
+
+            <div class="report-section">
+                <h3 class="report-section-title">Dificultades encontradas</h3>
+                <p class="report-text">{{ project.final_report.difficulties }}</p>
+            </div>
+
+            {% if project.final_report.comments %}
+                <div class="report-section">
+                    <h3 class="report-section-title">Comentarios adicionales</h3>
+                    <p class="report-text">{{ project.final_report.comments }}</p>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <div class="card">
         <div class="section-header">
-            <h3 class="section-title">Necesidades del Proyecto</h3>
-            <span class="badge badge-neutral">Fuente: Bonita Cloud</span>
+            <h2 class="section-title">Necesidades</h2>
+            <div>
+                {% if include_all_needs %}
+                    <span class="muted">Mostrando Todas</span>
+                    <a href="?" class="toggle-link">ver solo abiertas</a>
+                {% else %}
+                    <span class="muted">Mostrando Abiertas</span>
+                    <a href="?all=1" class="toggle-link">ver todas</a>
+                {% endif %}
+            </div>
         </div>
 
         <div class="table-wrapper">
-            <table class="table">
+            <table>
                 <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Cantidad</th>
-                        <th>Ayuda Red</th>
-                        <th>Estado</th>
-                    </tr>
+                <tr>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Monto/Cant.</th>
+                    <th>Estado</th>
+                    <th>Necesita colaboración</th>
+                </tr>
                 </thead>
                 <tbody>
-                    {% for n in needs_list %}
+                {% for n in needs_list %}
                     <tr>
-                        <!-- Accedemos como diccionario: n.tipo, n.descripcion -->
+                        <td>{{ n.title|default:"" }}</td>
+                        <td>{{ n.get_request_type_display }}</td>
+                        <td>{{ n.description|default:"" }}</td>
+                        <td>{{ n.target_qty|default:"" }}</td>
                         <td>
-                            <span class="badge badge-type">{{ n.request_type }}</span>
-                        </td>
-                        <td>{{ n.title }}</td>
-                        <td>{{ n.description }}</td>
-                        <td>{{ n.target_qty }}</td>
-                        <td>
-                            {% if n.ayuda %}
-                            <span class="badge badge-warn">Sí</span>
-                            {% else %}
-                            <span class="badge badge-neutral">No</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if n.status == 'OPEN' %}
-                            <span class="badge badge-ok">Pendiente</span>
+                            {% if n.status == "COMPLETED" %}
+                                <span class="badge badge-completed">✓ Cumplida</span>
+                            {% elif n.status == "RESERVED" %}
+                                <span class="badge badge-reserved">⚠ Reservada</span>
                             {% else %}
                             <span class="badge badge-pending">Completada</span>
                             {% endif %}
                         </td>
+                        <td>{% if n.needs_help %}Si{% else %}No{% endif %}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📭</div>
-                                <div>No hay necesidades registradas en Bonita para este caso.</div>
-                            </div>
+                        <td colspan="6" class="empty-message">
+                            No hay necesidades para mostrar
                         </td>
                     </tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Sección de Etapas -->
     <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Etapas</h3>
-        </div>
+        <h2 class="section-title">Etapas</h2>
+
         <div class="table-wrapper">
-            <table class="table">
+            <table>
                 <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Inicio</th>
-                        <th>Fin</th>
-                    </tr>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                </tr>
                 </thead>
                 <tbody>
-                    {% for stage in stages %}
+                {% for stage in stages %}
                     <tr>
                         <td>{{ stage.name }}</td>
                         <td>{{ stage.description|default:"-" }}</td>
@@ -328,36 +440,39 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4">
-                            <div class="empty-state">No hay etapas registradas.</div>
+                        <td colspan="4" class="empty-message">
+                            No hay etapas registradas.
                         </td>
                     </tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         </div>
 
         {% if request.user|has_group:"ONG solicitante" %}
-        <div class="form-card">
-            <h4>Agregar Nueva Etapa</h4>
-            <form action="{% url 'projects:add_stage' project.id %}" method="post">
+            <hr>
+            <h3>Agregar Nueva Etapa</h3>
+            <form method="post">
                 {% csrf_token %}
                 {{ stage_form.as_p }}
                 <div class="actions">
-                    <button type="submit" class="btn btn-primary">Guardar Etapa</button>
+                    <button type="submit" name="add_stage" class="btn btn-primary">
+                        Guardar Etapa
+                    </button>
                 </div>
             </form>
-        </div>
         {% endif %}
     </div>
 
-    <!-- Sección de Observaciones -->
     <div class="card">
-        <div class="section-header">
-            <h3 class="section-title">Observaciones del Consejo</h3>
-        </div>
+        <h2 class="section-title">Observaciones del Consejo</h2>
+
+        {% if request.user|has_group:"ONG solicitante" %}
+            <p class="muted">Visualiza y gestiona las observaciones realizadas por el Consejo Directivo</p>
+        {% endif %}
+
         <div class="table-wrapper">
-            <table class="table">
+            <table>
                 <thead>
                     <tr>
                         <th>Observador</th>
@@ -422,6 +537,5 @@
         </div>
         {% endif %}
     </div>
-</div>
 
 {% endblock %}

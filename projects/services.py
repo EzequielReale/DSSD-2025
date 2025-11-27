@@ -19,7 +19,7 @@ class ProjectService:
             project = Project.objects.get(pk=project_id)
         except Project.DoesNotExist:
             return None
-            
+
         context = {
             "local": project,
             "needs": [],
@@ -32,7 +32,7 @@ class ProjectService:
         # --- MAGIA: Traer datos de Bonita ---
         # Asumimos que en Bonita tienes variables de proceso llamadas:
         # 'solicitudes' (List/JSON) y 'compromisos' (List/JSON)
-        
+
         # Esto hay que parametrizarlo pero me chupa un huevo FUNCIONA CARAJO
         requests_data = self.bonita.get_case_variable(project.monitoring_case_id, "solicitudes")
         # commitments_data = self.bonita.get_case_variable(project.bonita_case_id, "compromisos")
@@ -40,7 +40,7 @@ class ProjectService:
         # Normalizar datos (por si es None o lista vacía)
         context["needs"] = requests_data if requests_data else []
         # context["commitments"] = commitments_data if commitments_data else []
-        
+
         return context
 
     def get_all_pending_needs(self):
@@ -55,7 +55,7 @@ class ProjectService:
         for p in projects:
             # Traemos la variable 'solicitudes' de cada caso
             reqs = self.bonita.get_case_variable(p.bonita_case_id, "solicitudes")
-            
+
             if reqs and isinstance(reqs, list):
                 for r in reqs:
                     # Filtramos solo las pendientes (ajusta el estado según tu JSON)
@@ -64,5 +64,6 @@ class ProjectService:
                         r['project_name'] = p.name
                         r['project_id'] = p.id
                         all_needs.append(r)
-        
+
         return all_needs
+        
