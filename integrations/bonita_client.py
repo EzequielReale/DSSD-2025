@@ -428,7 +428,7 @@ class BonitaClient:
         Busca tareas humanas ya finalizadas (archivadas) para un caso específico.
         Útil para ver cuándo se resolvió algo en el pasado.
         """
-        self._ensure_token()
+        self._ensure_csrf()
         # Filtramos por el ID del caso (el proyecto)
         filters = [f"caseId={case_id}"]
         if task_name:
@@ -446,10 +446,10 @@ class BonitaClient:
             "o": "archivedDate DESC"
         }
         
-        response = requests.get(
-            f"{self.api_url}/bpm/archivedHumanTask",
+        response = self.s.get(
+            f"{self.base}/API/bpm/archivedHumanTask",
             params=params,
-            cookies=self.cookies
+            headers=self._h_auth()
         )
         response.raise_for_status()
         return response.json()
@@ -458,11 +458,11 @@ class BonitaClient:
         """
         Busca un proceso (caso) que ya terminó completamente.
         """
-        self._ensure_token()
+        self._ensure_csrf()
         # Buscamos el caso específico en la tabla de históricos
-        response = requests.get(
-            f"{self.api_url}/bpm/archivedCase/{case_id}",
-            cookies=self.cookies
+        response = self.s.get(
+            f"{self.base}/API/bpm/archivedCase/{case_id}",
+            headers=self._h_auth()
         )
         if response.status_code == 404:
             return None
@@ -473,7 +473,7 @@ class BonitaClient:
         """
         Busca las tareas que están pendientes AHORA mismo para un proyecto.
         """
-        self._ensure_token()
+        self._ensure_csrf()
         params = {
             "p": 0,
             "c": 100,
@@ -481,10 +481,10 @@ class BonitaClient:
             "d": ["assigned_id"] # Pedimos que nos traiga los datos del usuario asignado también
         }
         
-        response = requests.get(
-            f"{self.api_url}/bpm/humanTask",
+        response = self.s.get(
+            f"{self.base}/API/bpm/humanTask",
             params=params,
-            cookies=self.cookies
+            headers=self._h_auth()
         )
         response.raise_for_status()
         return response.json()

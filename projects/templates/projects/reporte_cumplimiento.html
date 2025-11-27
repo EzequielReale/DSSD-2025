@@ -1,41 +1,66 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Reporte de Cumplimiento de Plazos</h2>
-    <p class="text-muted">Auditoría de tiempos de resolución de observaciones (Plazo máx: 5 días)</p>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold">Auditoría de Plazos</h2>
+            <p class="text-muted mb-0">Resolución de observaciones (SLA: 5 días máx)</p>
+        </div>
+        <span class="badge bg-secondary">Estándar ISO/Interno</span>
+    </div>
 
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Proyecto</th>
-                <th>Observación</th>
-                <th>Fecha Inicio (BD)</th>
-                <th>Fecha Fin (Bonita)</th>
-                <th>Días Tardados</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in reporte %}
-            <tr>
-                <td>{{ item.proyecto }}</td>
-                <td>{{ item.observacion }}</td>
-                <td>{{ item.fecha_inicio|date:"d/m/Y H:i" }}</td>
-                <td>{{ item.fecha_fin|date:"d/m/Y H:i" }}</td>
-                <td>{{ item.dias_tardados }} días</td>
-                <td>
-                    {% if item.cumple_plazo %}
-                        <span class="badge bg-success">En fecha</span>
-                    {% else %}
-                        <span class="badge bg-danger">Incumplimiento</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6">No hay observaciones resueltas para analizar.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-dark text-white">
+                <tr>
+                    <th class="py-3 ps-4">PROYECTO / OBSERVACIÓN</th>
+                    <th class="py-3">CICLO DE TIEMPO</th>
+                    <th class="py-3 text-center">DURACIÓN</th>
+                    <th class="py-3 text-end pe-4">ESTADO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in reporte %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="fw-bold text-dark">{{ item.proyecto }}</div>
+                        <div class="text-secondary small text-truncate" style="max-width: 300px;">
+                            {{ item.observacion }}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column small">
+                            <span class="text-muted">Inicio: <span class="text-dark">{{ item.fecha_inicio|date:"d/m/Y" }}</span></span>
+                            <br>
+                            <span class="text-muted">Fin: &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-dark">{{ item.fecha_fin|date:"d/m/Y" }}</span></span>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="fw-bold fs-5">{{ item.dias_tardados }}</span>
+                        <span class="text-muted small">días</span>
+                    </td>
+                    <td class="text-end pe-4">
+                        {% if item.cumple_plazo %}
+                            <span class="badge rounded-pill bg-success bg-opacity-75 px-3 py-2">
+                                <i class="bi bi-check-lg me-1"></i> En Tiempo
+                            </span>
+                        {% else %}
+                            <span class="badge rounded-pill bg-danger px-3 py-2 shadow-sm">
+                                <i class="bi bi-exclamation-octagon me-1"></i> Desvío
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center py-5 text-muted">
+                        No hay observaciones resueltas para auditar en este período.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

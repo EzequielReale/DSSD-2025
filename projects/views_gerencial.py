@@ -29,7 +29,7 @@ def start_monitoring(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     
     # Si ya tiene uno activo, no iniciamos otro
-    if project.monitoring_case_id:
+    if project.has_monitoring:
         messages.warning(request, "Ya existe una sesión de monitoreo activa para este proyecto.")
         return redirect('projects:project_detail', project_id=project.id)
 
@@ -56,7 +56,14 @@ def start_monitoring(request, project_id):
             )
             
             if success:
-                project.monitoring_case_id = case_id
+                # Creamos la observación placeholder para guardar el case_id
+                Observation.objects.create(
+                    project=project,
+                    monitoring_case_id=case_id,
+                    observer_label=request.user.username,
+                    text="" # Se llenará en add_observation
+                )
+                project.has_monitoring = True
                 project.save()
                 break
     
@@ -79,23 +86,24 @@ def start_monitoring(request, project_id):
 @require_http_methods(["POST"])
 def add_observation(request, project_id: int):
     project = get_object_or_404(Project, pk=project_id)
-    form = ObservationForm(request.POST)
     
-    if project.has_monitoring:
-        messages.error(request, "El proyecto ya tiene una observación cargada.")
+    # Buscamos la observación existente (creada en start_monitoring)
+    observation = Observation.objects.filter(project=project).first()
+    
+    if not observation:
+        messages.error(request, "Debe iniciar el monitoreo antes de agregar observaciones.")
         return redirect("projects:project_detail", project_id=project_id)
+    
+    form = ObservationForm(request.POST, instance=observation)
     
     if form.is_valid():
         try:
             observation = form.save(commit=False)
-            observation.project = project
             observation.observer_label = f"{request.user.username}"
             observation.save()
-            project.has_monitoring = True
-            project.save()
-
+            
             success = client.execute_task(
-                    case_id=project.monitoring_case_id,
+                    case_id=observation.monitoring_case_id,
                     task_name="Enviar informe de sugerencias",
                     user_id=client.get_session_user_id(),
                 )
@@ -111,46 +119,69 @@ def add_observation(request, project_id: int):
 @require_user_passes_test(is_consejo_directivo)
 def compliance_report(request):
     """
-    HU7: Reporte de Cumplimiento de Plazos.
+    Reporte de Cumplimiento de Plazos.
     Compara cuándo se creó la observación vs cuándo se cerró la tarea en Bonita.
     """
-    template_name = "projects/reporte_cumplimiento.html"
-    
     # 1. Obtenemos observaciones resueltas de la BD
-    observaciones = Observation.objects.filter(is_resolved=True).select_related('project')
+    observaciones = Observation.objects.filter(resolved=True).select_related('project')
     reporte = []
 
+    print(observaciones)
+
     for obs in observaciones:
-        case_id = obs.project.bonita_case_id
+        # La tarea "Resolver problemas" pertenece al proceso de Monitoreo
+        case_id = obs.monitoring_case_id
         if not case_id:
             continue
 
         # 2. Buscamos en Bonita cuándo se cerró la tarea "Resolver problemas"
         # Asumimos que la última tarea de este tipo corresponde a esta observación
         try:
-            tareas_archivadas = client_directivo.get_archived_human_tasks(case_id, "Resolver problemas")
+            tareas_archivadas = client.get_archived_human_tasks(case_id, "Resolver problemas")
         except Exception:
+            print(f"Error al obtener tareas archivadas para el caso {case_id}")
             tareas_archivadas = []
         
+        print(tareas_archivadas)
+
         if tareas_archivadas:
-            # Tomamos la más reciente
-            tarea_bonita = tareas_archivadas[0]
-            fecha_fin_bonita_str = tarea_bonita.get('archivedDate') # Bonita devuelve string
+            # Buscamos la primera tarea que se haya completado DESPUÉS de que se creó la observación
+            tarea_bonita = None
+            for tarea in tareas_archivadas:
+                fecha_fin_str = tarea.get('archivedDate')
+                if not fecha_fin_str:
+                    continue
+                    
+                fecha_fin = parser.parse(fecha_fin_str)
+                if timezone.is_naive(fecha_fin):
+                    fecha_fin = timezone.make_aware(fecha_fin)
+                
+                tarea_bonita = tarea
             
-            if fecha_fin_bonita_str:
-                # Convertimos el string de Bonita a fecha real
+            if tarea_bonita:
+                fecha_fin_bonita_str = tarea_bonita.get('archivedDate')
+                # Convertimos el string de Bonita a fecha real (ya lo hicimos arriba, pero para mantener estructura)
                 fecha_fin = parser.parse(fecha_fin_bonita_str)
+                if timezone.is_naive(fecha_fin):
+                    fecha_fin = timezone.make_aware(fecha_fin)
+                    
                 fecha_inicio = obs.created_at
                 
                 # CÁLCULO: Tiempo real = Fecha Fin - Fecha Inicio
                 tiempo_tardado = fecha_fin - fecha_inicio
                 dias_tardados = tiempo_tardado.days
                 
-                cumple = dias_tardados <= 5
+                # Si tardó menos de un día (0 días), mostramos 0, no -1
+                if dias_tardados < 0:
+                     dias_tardados = 0
+
+                print(dias_tardados)
+                
+                cumple = dias_tardados < 0
                 
                 reporte.append({
                     'proyecto': obs.project.name,
-                    'observacion': obs.text, # Note: Observation model uses 'text' not 'description' based on models.py
+                    'observacion': obs.text,
                     'fecha_inicio': fecha_inicio,
                     'fecha_fin': fecha_fin,
                     'dias_tardados': dias_tardados,
@@ -158,16 +189,15 @@ def compliance_report(request):
                 })
 
     context = {'reporte': reporte}
-    return render(request, template_name, context)
+    print(reporte)
+    return render(request, "projects/reporte_cumplimiento.html", context)
 
 @require_user_passes_test(is_consejo_directivo)
 def lifecycle_metrics(request):
     """
-    HU8: Métricas de Ciclo de Vida.
+    Métricas de Ciclo de Vida.
     Promedio de duración desde Alta del Proyecto hasta Fin del proceso en Bonita.
     """
-    template_name = "projects/metricas_ciclo_vida.html"
-
     projects = Project.objects.all()
     
     duraciones_por_mes = {} # Diccionario para agrupar: {'Octubre': [5, 10, 2], 'Noviembre': [1]}
@@ -181,20 +211,22 @@ def lifecycle_metrics(request):
         
         # Buscamos si el caso ya terminó completamente en Bonita
         try:
-            caso_archivado = client_directivo.get_archived_case(proj.bonita_case_id)
-        except Exception:
+            caso_archivado = client.get_archived_case(proj.bonita_case_id)
+        except Exception as e:
+            print(f"Error getting archived case for project {proj.name} (Case ID: {proj.bonita_case_id}): {e}")
             caso_archivado = None
         
         print(caso_archivado)
 
-        if caso_archivado:
+        if caso_archivado and caso_archivado.get('end_date'):
             # Si terminó, usamos la fecha de archivo del caso
             end_date = parser.parse(caso_archivado['end_date'])
         else:
             # Si no terminó, buscamos si llegó a la tarea "Ejecución del proyecto" (hito intermedio)
             try:
-                tareas_ejecucion = client_directivo.get_archived_human_tasks(proj.bonita_case_id, "Ejecución del proyecto")
-            except Exception:
+                tareas_ejecucion = client.get_archived_human_tasks(proj.bonita_case_id, "Ejecución del proyecto")
+            except Exception as e:
+                print(f"Error getting archived tasks: {e}")
                 tareas_ejecucion = []
 
             print(tareas_ejecucion)
@@ -204,6 +236,10 @@ def lifecycle_metrics(request):
         
         if start_date and end_date:
             # CÁLCULO: Duración = Fin - Inicio
+            # Convertimos end_date a date para poder restar con start_date (que es date)
+            if hasattr(end_date, 'date'):
+                end_date = end_date.date()
+                
             delta = end_date - start_date
             mes_nombre = start_date.strftime("%B") # Ej: "October"
             
@@ -221,17 +257,14 @@ def lifecycle_metrics(request):
         })
         
     context = {'datos_grafico': datos_grafico}
-    return render(request, template_name, context)
+    return render(request, "projects/metricas_ciclo_vida.html", context)
 
 @require_user_passes_test(is_consejo_directivo)
 def stalled_projects_monitor(request):
     """
-    HU9: Monitor de Proyectos Detenidos.
+    Monitor de Proyectos Detenidos.
     Alerta si una tarea está activa sin tocarse por más de 72hs.
     """
-    template_name = "projects/monitor_detenidos.html"
-
-    
     # Obtenemos proyectos activos de la BD
     proyectos_activos = Project.objects.filter(
         status__in=['OPEN', 'WITH_COMMITMENTS', 'READY', 'EXECUTING'])
@@ -247,24 +280,29 @@ def stalled_projects_monitor(request):
             
         # Consultamos las tareas pendientes en Bonita
         try:
-            tareas_activas = client_directivo.get_active_tasks(proj.bonita_case_id)
-        except Exception:
+            tareas_activas = client.get_active_tasks(proj.bonita_case_id)
+        except Exception as e:
+            print(f"Error al obtener tareas activas para proyecto {proj.name} (Case ID: {proj.bonita_case_id}): {e}")
             tareas_activas = []
         
         print(tareas_activas)
         
         for tarea in tareas_activas:
             # La fecha de asignación viene como string, la convertimos
-            assigned_date_str = tarea.get('assigned_date')
-            if not assigned_date_str:
-                continue # Si nadie la tomó todavía, quizás no cuenta (o usamos last_update_date)
+            # Si no está asignada, usamos la fecha en que llegó al estado (reached_state_date)
+            date_str = tarea.get('assigned_date') or tarea.get('reached_state_date')
+            
+            if not date_str:
+                continue
                 
-            assigned_date = parser.parse(assigned_date_str)
+            reference_date = parser.parse(date_str)
+            if timezone.is_naive(reference_date):
+                reference_date = timezone.make_aware(reference_date)
             
-            # CÁLCULO: Tiempo detenido = Ahora - Fecha Asignación
-            tiempo_detenido = ahora - assigned_date
+            # CÁLCULO: Tiempo detenido = Ahora - Fecha Referencia
+            tiempo_detenido = ahora - reference_date
             
-            if tiempo_detenido > timedelta(hours=72):
+            if tiempo_detenido > timedelta(seconds=3):
                 # Recuperamos info del usuario asignado (si existe)
                 usuario_nombre = "Sin asignar"
                 if 'assigned_id' in tarea and tarea['assigned_id']:
@@ -285,5 +323,5 @@ def stalled_projects_monitor(request):
     print(detenidos)
     
     context = {'proyectos_detenidos': detenidos}
-    return render(request, template_name, context)
+    return render(request, "projects/monitor_detenidos.html", context)
     

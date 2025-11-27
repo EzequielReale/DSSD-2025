@@ -267,14 +267,13 @@ def fix_observation(request, project_id: int, observation_id: int):
         project = observation.project
         
         success = client_solicitante.execute_task(
-            case_id=observation.project.monitoring_case_id,
+            case_id=observation.monitoring_case_id,
             task_name="Resolver problemas",
             user_id=client_solicitante.get_session_user_id(),
         )
 
         observation.resolved = True
         observation.save()
-        project.monitoring_case_id = None
         project.has_monitoring = False
         project.save()
         

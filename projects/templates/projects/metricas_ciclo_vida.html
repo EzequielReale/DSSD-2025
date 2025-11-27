@@ -1,27 +1,47 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Métricas de Ciclo de Vida</h2>
-    <p class="text-muted">Tiempo promedio desde Alta hasta Ejecución/Fin por mes.</p>
+<div class="container mt-5">
+    <div class="mb-4">
+        <h2 class="fw-bold">Métricas de Ciclo de Vida</h2>
+        <p class="text-muted">Análisis histórico: Tiempo promedio (Alta → Ejecución/Fin)</p>
+    </div>
 
-    <div class="card p-4">
+    {% if datos_grafico %}
+    <div class="row row-cols-1 row-cols-md-2 g-4">
         {% for dato in datos_grafico %}
-        <div class="mb-3">
-            <div class="d-flex justify-content-between">
-                <strong>{{ dato.mes }}</strong>
-                <span>{{ dato.promedio }} días promedio</span>
-            </div>
-            <div class="progress">
-                <div class="progress-bar" role="progressbar" 
-                     style="width: {% widthratio dato.promedio 1 2 %}%;" 
-                     aria-valuenow="{{ dato.promedio }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <h5 class="card-title fw-bold text-primary mb-0">{{ dato.mes }}</h5>
+                        <span class="badge bg-light text-dark border">{{ dato.promedio }} días promedio</span>
+                    </div>
+                    
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-primary bg-gradient rounded" 
+                             role="progressbar" 
+                             style="width: {% widthratio dato.promedio 1 2 %}%;" 
+                             aria-valuenow="{{ dato.promedio }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Rendimiento mensual</small>
                 </div>
             </div>
         </div>
-        {% empty %}
-        <p>No hay suficientes datos históricos para generar métricas.</p>
         {% endfor %}
     </div>
+    {% else %}
+    <div class="alert alert-info shadow-sm border-0 d-flex align-items-center" role="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-info-circle-fill me-3" viewBox="0 0 16 16">
+             <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+        </svg>
+        <div>
+            <strong>Sin datos suficientes.</strong> Aún no hay historial para generar las métricas visuales.
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
