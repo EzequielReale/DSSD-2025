@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Monitor de Proyectos Detenidos</h2>
+    <div class="alert alert-warning">
+        Mostrando proyectos con tareas sin actividad por más de 72 horas.
+    </div>
+
+    <table class="table table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Proyecto</th>
+                <th>Tarea Trabada</th>
+                <th>Responsable Actual</th>
+                <th>Tiempo Detenido</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in proyectos_detenidos %}
+            <tr>
+                <td>{{ item.proyecto }}</td>
+                <td>{{ item.tarea }}</td>
+                <td>{{ item.responsable }}</td>
+                <td>{{ item.horas_detenido }} horas</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary">Contactar</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">¡Excelente! No hay proyectos detenidos actualmente.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

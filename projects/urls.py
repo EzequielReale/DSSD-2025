@@ -48,4 +48,13 @@ urlpatterns = [
         name="add_observation",
     ),
     # path("dashboard/", ger.dashboard, name="dashboard")
+    path('reports/compliance/',
+         ger.compliance_report,
+         name='compliance_report'),
+    path('reports/lifecycle/',
+         ger.lifecycle_metrics,
+         name='lifecycle_metrics'),
+    path('reports/stalled/',
+         ger.stalled_projects_monitor,
+         name='stalled_projects_monitor'),
 ]

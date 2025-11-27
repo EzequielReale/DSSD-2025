@@ -383,3 +383,71 @@ class BonitaClient:
             time.sleep(delay)
 
         return False
+
+    # ---------- Casos Archivados para histórico ----------
+    
+    def get_archived_human_tasks(self, case_id, task_name=None):
+        """
+        Busca tareas humanas ya finalizadas (archivadas) para un caso específico.
+        Útil para ver cuándo se resolvió algo en el pasado.
+        """
+        self._ensure_token()
+        # Filtramos por el ID del caso (el proyecto)
+        filters = [f"caseId={case_id}"]
+        if task_name:
+            # Si nos piden una tarea específica (ej: 'Resolver problemas') filtramos por nombre
+            filters.append(f"name={task_name}")
+        
+        # Pedimos el estado 'completed' para saber cuándo se terminó realmente
+        filters.append("state=completed")
+        
+        # Ordenamos por fecha de archivo descendente (la más reciente primero)
+        params = {
+            "p": 0,
+            "c": 100,
+            "f": filters,
+            "o": "archivedDate DESC"
+        }
+        
+        response = requests.get(
+            f"{self.api_url}/bpm/archivedHumanTask",
+            params=params,
+            cookies=self.cookies
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_archived_case(self, case_id):
+        """
+        Busca un proceso (caso) que ya terminó completamente.
+        """
+        self._ensure_token()
+        # Buscamos el caso específico en la tabla de históricos
+        response = requests.get(
+            f"{self.api_url}/bpm/archivedCase/{case_id}",
+            cookies=self.cookies
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json()
+
+    def get_active_tasks(self, case_id):
+        """
+        Busca las tareas que están pendientes AHORA mismo para un proyecto.
+        """
+        self._ensure_token()
+        params = {
+            "p": 0,
+            "c": 100,
+            "f": [f"caseId={case_id}", "state=ready"], # state=ready significa que está esperando a alguien
+            "d": ["assigned_id"] # Pedimos que nos traiga los datos del usuario asignado también
+        }
+        
+        response = requests.get(
+            f"{self.api_url}/bpm/humanTask",
+            params=params,
+            cookies=self.cookies
+        )
+        response.raise_for_status()
+        return response.json()

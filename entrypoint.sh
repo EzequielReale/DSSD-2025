@@ -39,4 +39,5 @@ if [ "$SEED_ON_START" = "1" ]; then
 fi
 
 echo "Levantando Gunicorn..."
-exec gunicorn --workers 3 --timeout 120 --bind 0.0.0.0:${PORT:-8000} ProjectPlanning.wsgi:application
+#exec gunicorn --workers 3 --timeout 120 --bind 0.0.0.0:${PORT:-8000} ProjectPlanning.wsgi:application
+python manage.py runserver 0.0.0.0:8000
