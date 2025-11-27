@@ -25,6 +25,7 @@ from .views import is_ong_solicitante
 from .services import ProjectService
 
 service = ProjectService()
+client_solicitante = BonitaClient(role="SOLICITANTE")
 
 
 @require_user_passes_test(is_ong_solicitante)
@@ -265,7 +266,7 @@ def fix_observation(request, project_id: int, observation_id: int):
         observation = get_object_or_404(Observation, pk=observation_id)
         project = observation.project
         
-        success = client_solicitante.execute_bonita_task(
+        success = client_solicitante.execute_task(
             case_id=observation.project.monitoring_case_id,
             task_name="Resolver problemas",
             user_id=client_solicitante.get_session_user_id(),
