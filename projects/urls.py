@@ -21,7 +21,7 @@ urlpatterns = [
         sol.analyze_commitment, name="analyze_commitment",
     ),
     path("projects/<int:project_id>/execute/", sol.execute_project, name="execute_project"),
-
+    path("projects/<int:project_id>/final-report/", sol.final_report, name="final_report"),
 
     # ONG COLABORADORA
     path("colab/projects/", col.collab_projects, name="collab_projects"),
@@ -31,9 +31,14 @@ urlpatterns = [
         name="collab_project_needs",
     ),
     path(
-        "colab/projects/<int:project_id>/needs/<int:request_id>/offer/",
+        "colab/projects/<int:project_id>/needs/<int:need_id>/offer/",
         col.offer_commitment,
         name="offer_commitment",
+    ),
+    path(
+        "colab/commitments/",
+        col.my_commitments,
+        name="my_commitments",
     ),
     path(
         "projects/<int:project_id>/commitments/<int:commitment_id>/fulfill/",

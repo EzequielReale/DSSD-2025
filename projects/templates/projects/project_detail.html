@@ -187,8 +187,72 @@
             box-shadow: 0 2px 8px rgba(45, 108, 223, 0.3);
         }
 
+        .final-report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .report-item {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+        }
+
+        .report-label {
+            font-size: 0.8rem;
+            color: var(--ink-2);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.3px;
+        }
+
+        .report-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .report-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .report-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .report-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 0.75rem;
+        }
+
+        .report-text {
+            color: var(--ink-2);
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
         @media (max-width: 768px) {
             .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .report-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -201,6 +265,7 @@
     <div class="project-header">
         <h1 class="project-title">{{ project.name }}</h1>
         <p class="project-description">{{ project.description|default:"(Sin descripción)" }}</p>
+        <p class="project-description"><strong>Estado:</strong> {{ project.get_status_display }}</p>
 
         <div class="info-grid">
             <div class="info-card">
@@ -228,23 +293,73 @@
 
     <div class="actions">
         {% if project.status == "READY" %}
-            <form method="post" style="display: inline;">
+            <form method="post" action="{% url 'projects:execute_project' project.id %}"  style="display: inline;">
                 {% csrf_token %}
-                <button type="submit" name="execute_project" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary">
                     Marcar proyecto en ejecución
                 </button>
             </form>
         {% endif %}
 
         {% if project.status == "WITH_COMMITMENTS" %}
-            <form method="post" style="display: inline;">
+            <form method="post" action="{% url 'projects:analyze_commitment' project.id %}" style="display: inline;">
                 {% csrf_token %}
-                <button type="submit" name="analyze_commitment" class="btn">
+                <button type="submit" class="btn">
                     Analizar donaciones
                 </button>
             </form>
         {% endif %}
+
+        {% if project.status == "EXECUTING" %}
+            <a href="{% url 'projects:final_report' project.id %}" class="btn btn-success" style="display: inline;">
+                Elaborar informe final
+            </a>
+        {% endif %}
     </div>
+
+    {% if project.status == "FINISHED" and project.final_report %}
+        <div class="card">
+            <div class="final-report-header">
+                <h2 class="section-title">📋 Informe Final del Proyecto</h2>
+                <span class="badge badge-completed">Proyecto Finalizado</span>
+            </div>
+
+            <div class="report-grid">
+                <div class="report-item">
+                    <div class="report-label">Fecha real de inicio</div>
+                    <div class="report-value">{{ project.final_report.actual_start_date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="report-item">
+                    <div class="report-label">Fecha real de fin</div>
+                    <div class="report-value">{{ project.final_report.actual_end_date|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="report-section">
+                <h3 class="report-section-title">Resumen de resultados</h3>
+                <p class="report-text">{{ project.final_report.summary }}</p>
+            </div>
+
+            <div class="report-section">
+                <h3 class="report-section-title">Aportes recibidos</h3>
+                <p class="report-text">{{ project.final_report.contributions }}</p>
+            </div>
+
+            <div class="report-section">
+                <h3 class="report-section-title">Dificultades encontradas</h3>
+                <p class="report-text">{{ project.final_report.difficulties }}</p>
+            </div>
+
+            {% if project.final_report.comments %}
+                <div class="report-section">
+                    <h3 class="report-section-title">Comentarios adicionales</h3>
+                    <p class="report-text">{{ project.final_report.comments }}</p>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
 
     <div class="card">
         <div class="section-header">
@@ -252,10 +367,10 @@
             <div>
                 {% if include_all_needs %}
                     <span class="muted">Mostrando Todas</span>
-                    <a href="?needs_filter=open" class="toggle-link">ver solo abiertas</a>
+                    <a href="?" class="toggle-link">ver solo abiertas</a>
                 {% else %}
                     <span class="muted">Mostrando Abiertas</span>
-                    <a href="?needs_filter=all" class="toggle-link">ver todas</a>
+                    <a href="?all=1" class="toggle-link">ver todas</a>
                 {% endif %}
             </div>
         </div>

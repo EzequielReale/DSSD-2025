@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% load group_tags %}
+
+{% block title %}Mis Compromisos{% endblock %}
+
+{% block extra_head %}
+    <style>
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .section-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin: 2rem 0 1rem 0;
+        color: var(--ink);
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        margin-bottom: 1.5rem;
+        background: var(--card);
+        box-shadow: var(--shadow);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+    thead {
+        background: #f9fafb;
+    }
+
+    th {
+        padding: 0.85rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--ink-2);
+        font-size: 0.85rem;
+        border-bottom: 2px solid var(--line);
+    }
+
+    td {
+        padding: 0.85rem;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    tbody tr:hover {
+        background: #fafafa;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-secondary {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .project-name {
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 0.25rem;
+    }
+
+    .need-title {
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 0.25rem;
+    }
+
+    .text-muted {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .empty-state {
+        padding: 2rem;
+        text-align: center;
+        color: #9ca3af;
+        font-style: italic;
+    }
+
+    .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .back-link {
+        display: inline-block;
+        color: var(--brand);
+        text-decoration: none;
+        margin-top: 2rem;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        color: var(--brand-600);
+        text-decoration: underline;
+    }
+
+    hr {
+        margin: 2.5rem 0;
+        border: none;
+        border-top: 1px solid var(--line);
+    }
+</style>
+{% endblock %}
+{% block content %}
+    <div class="container mt-4">
+        <h1 class="mb-3">Mis compromisos de colaboración</h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-err{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        {# BLOQUE 1: puedo enviar colaboración #}
+        <h2 class="h5 mt-4 mb-3">Compromisos listos para enviar colaboración</h2>
+
+        {% if ready_to_fulfill %}
+            <div class="table-responsive mb-4">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Necesidad</th>
+                        <th>Descripción del compromiso</th>
+                        <th>Estado del proyecto</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in ready_to_fulfill %}
+                        {% with c=item.commitment p=item.project r=item.request %}
+                            <tr>
+                                <td>
+                                    {{ p.name }}
+                                </td>
+                                <td>
+                                    <strong>{{ r.title }}</strong><br>
+                                    <small class="text-muted">{{ r.get_request_type_display }}</small>
+                                </td>
+                                <td>{{ c.description }}</td>
+                                <td>
+                                <span class="badge bg-success">
+                                  En ejecución
+                                </span>
+                                </td>
+                                <td>
+                                    <form method="post"
+                                          action="{% url 'projects:fulfill_commitment' p.id c.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            Enviar colaboración
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted">No tenés compromisos listos para enviar colaboración.</p>
+        {% endif %}
+
+        <hr class="my-4">
+
+        {# BLOQUE 2: esperando que el proyecto se ejecute #}
+        <h2 class="h5 mt-4 mb-3">Compromisos en proyectos aún no ejecutados</h2>
+
+        {% if waiting_execution %}
+            <div class="table-responsive mb-4">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Necesidad</th>
+                        <th>Descripción del compromiso</th>
+                        <th>Estado del proyecto</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in waiting_execution %}
+                        {% with c=item.commitment p=item.project r=item.request %}
+                            <tr>
+                                <td>
+                                    {{ p.name }}
+                                </td>
+                                <td>
+                                    <strong>{{ r.title }}</strong><br>
+                                    <small class="text-muted">{{ r.get_request_type_display }}</small>
+                                </td>
+                                <td>{{ c.description }}</td>
+                                <td>
+                                    {% if p.status == "OPEN" %}
+                                        <span class="badge bg-warning text-dark">Buscando colaboraciones</span>
+                                    {% elif p.status == "WITH_COMMITMENTS" %}
+                                        <span class="badge bg-info text-dark">Con compromisos</span>
+                                    {% elif p.status == "READY" %}
+                                        <span class="badge bg-secondary">Listo para ejecutar</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ p.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted">No tenés compromisos en proyectos que aún no estén en ejecución.</p>
+        {% endif %}
+
+        <h2 class="h5 mt-4 mb-3">Compromisos completados</h2>
+
+        {% if fulfilled_commitments %}
+            <div class="table-responsive mb-4">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Necesidad</th>
+                        <th>Descripción del compromiso</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in fulfilled_commitments %}
+                        {% with c=item.commitment p=item.project r=item.request %}
+                            <tr>
+                                <td>
+                                    {{ p.name }}
+                                </td>
+                                <td>
+                                    <strong>{{ r.title }}</strong><br>
+                                    <small class="text-muted">{{ r.get_request_type_display }}</small>
+                                </td>
+                                <td>{{ c.description }}</td>
+                            </tr>
+                        {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted">No tenés compromisos completados.</p>
+        {% endif %}
+
+        <h2 class="h5 mt-4 mb-3">Compromisos Rechazados</h2>
+        {% if rejected_commitments %}
+            <div class="table-responsive mb-4">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Necesidad</th>
+                        <th>Descripción del compromiso</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in rejected_commitments %}
+                        {% with c=item.commitment p=item.project r=item.request %}
+                            <tr>
+                                <td>
+                                    {{ p.name }}
+                                </td>
+                                <td>
+                                    <strong>{{ r.title }}</strong><br>
+                                    <small class="text-muted">{{ r.get_request_type_display }}</small>
+                                </td>
+                                <td>{{ c.description }}</td>
+                            </tr>
+                        {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted">No tenés compromisos rechazados.</p>
+        {% endif %}
+
+        <hr>
+        <a href="{% url 'projects:collab_projects' %}" class="btn btn-link mt-3">
+            ← Volver a proyectos con necesidades
+        </a>
+    </div>
+{% endblock %}

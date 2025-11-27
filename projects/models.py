@@ -29,6 +29,7 @@ class ProjectStatus(models.TextChoices):
     EXECUTING = "EXECUTING", "En ejecución"
     FINISHED = "FINISHED", "Finalizado"
 
+
 class Project(models.Model):
     """
     Proyecto.
@@ -84,6 +85,7 @@ class CollaborationRequest(models.Model):
         default=RequestStatus.OPEN, db_index=True
     )
     needs_help = models.BooleanField(default=True)
+    cloud_id = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -91,7 +93,7 @@ class CollaborationRequest(models.Model):
         db_table = 'collaboration_request'
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["project"]), # Índice en el FK
+            models.Index(fields=["project"]),
             models.Index(fields=["status"]),
         ]
         constraints = [
@@ -115,10 +117,6 @@ class Commitment(models.Model):
     actor_label = models.CharField(max_length=140, blank=True, null=True, db_index=True)
 
     description = models.TextField(blank=True)
-    amount = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
-        validators=[MinValueValidator(0)]
-    )
     status = models.CharField(
         max_length=12, choices=CommitmentStatus.choices,
         default=CommitmentStatus.ACTIVE, db_index=True
@@ -181,3 +179,18 @@ class Observation(models.Model):
         return f"Observación para {self.project.name}"
 
 
+class FinalReport(models.Model):
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="final_report")
+
+    actual_start_date = models.DateField(null=True, blank=True)
+    actual_end_date = models.DateField(null=True, blank=True)
+    summary = models.TextField("Resumen de resultados", blank=True)
+    contributions = models.TextField("Aportes recibidos", blank=True)
+    difficulties = models.TextField("Dificultades encontradas", blank=True)
+    comments = models.TextField("Comentarios adicionales", blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Informe final del proyecto {self.project.id}"

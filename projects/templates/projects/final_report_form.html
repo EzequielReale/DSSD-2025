@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+    <style>
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--ink);
+            margin: 0;
+        }
+
+        .form-card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-card label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--ink-2);
+        }
+
+        .form-card input,
+        .form-card select,
+        .form-card textarea {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            font: inherit;
+            margin-bottom: 0.25rem;
+        }
+
+        .form-card textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-card input:focus,
+        .form-card select:focus,
+        .form-card textarea:focus {
+            outline: 2px solid var(--focus);
+            outline-offset: 1px;
+            border-color: transparent;
+        }
+
+        .form-card p {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-card p:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-primary {
+            padding: 0.7rem 1.5rem;
+        }
+
+        .back-link {
+            color: var(--brand);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            color: var(--brand-600);
+            text-decoration: underline;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>Informe final del proyecto: {{ project.name }}</h2>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-card">
+            {{ form.as_p }}
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Guardar informe</button>
+            <a href="{% url 'projects:project_detail' project.id %}" class="btn">Cancelar</a>
+        </div>
+    </form>
+{% endblock %}

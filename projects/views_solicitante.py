@@ -14,8 +14,12 @@ from django.utils import timezone
 
 from ProjectPlanning.decorators import require_user_passes_test
 
-from .forms import ProjectModelForm, NeedItemForm, StageForm
-from .models import Project, CollaborationRequest, Observation, RequestStatus
+from .forms import ProjectModelForm, NeedItemForm, StageForm, FinalReportForm
+from .models import (
+    Project, CollaborationRequest,
+    Commitment, Observation, RequestStatus,
+    ProjectStatus, CommitmentStatus, FinalReport
+)
 from integrations.bonita_client import BonitaClient
 from .views import is_ong_solicitante
 from .services import ProjectService
@@ -116,6 +120,11 @@ def project_create(request):
                     "target_qty": str(n_data.get("cantidad") or "0"),
                 })
 
+            if needs_with_help:
+                project.status = ProjectStatus.OPEN
+            else:
+                project.status = ProjectStatus.READY
+
             necesidades_json = json.dumps(needs_with_help, ensure_ascii=False)
 
             pid = client.get_process_id(
@@ -144,8 +153,36 @@ def project_create(request):
             if not cloud_ok:
                 raise RuntimeError("Falló sincronizando necesidades")
 
+            requests = client.get_case_variable(case_id, "necesidadesJson")
+
+            # Normalizar el JSON que viene de Bonita
+            if isinstance(requests, str):
+                try:
+                    requests = json.loads(requests)
+                except Exception:
+                    requests = []
+
+            if not isinstance(requests, list):
+                requests = []
+
+            # Traer las necesidades locales que necesitan ayuda, en el orden de creación
+            local_needs = list(
+                CollaborationRequest.objects.filter(
+                    project=project,
+                    needs_help=True,
+                ).order_by("id")
+            )
+
+            # Si la cantidad coincide, hago zip por posición
+            if len(local_needs) == len(requests):
+                for local, remote in zip(local_needs, requests):
+                    local.cloud_id = remote.get("id")
+                CollaborationRequest.objects.bulk_update(local_needs, ["cloud_id"])
+            else:
+                pass
+
             project.bonita_case_id = case_id
-            project.save(update_fields=["bonita_case_id"])
+            project.save(update_fields=["status", "bonita_case_id"])
 
     except Exception as e:
         try:
@@ -244,16 +281,6 @@ def resolve_observation(request, observation_id: int):
 @require_user_passes_test(is_ong_solicitante)
 @require_http_methods(["GET", "POST"])
 def analyze_commitment(request, project_id):
-    """
-    Tarea 'Analizar donaciones' para un proyecto concreto.
-
-    - GET: lee de Bonita la variable `compromisoJson` (y `idPedido`, `idCompromiso`)
-      y muestra los datos del compromiso para que la ONG solicitante decida.
-
-    - POST: registra la decisión (aceptar / rechazar), setea `decisionCompromiso`
-      en Bonita, ejecuta la tarea y espera a que el conector de salida
-      llame a la Cloud API.
-    """
     project = get_object_or_404(Project, pk=project_id)
 
     if not project.bonita_case_id:
@@ -270,8 +297,8 @@ def analyze_commitment(request, project_id):
     if request.method == "GET":
         try:
             raw_json = client.get_case_variable(case_id, "compromisoJson")
-            id_pedido = client.get_case_variable(case_id, "idPedido")
-            id_compromiso = client.get_case_variable(case_id, "idCompromiso")
+            id_need = client.get_case_variable(case_id, "idPedido")
+            id_commitment = client.get_case_variable(case_id, "idCompromiso")
         except Exception as e:
             messages.error(request, f"No se pudo obtener el compromiso desde Bonita: {e}")
             return redirect("projects:project_detail", project_id=project.id)
@@ -285,9 +312,9 @@ def analyze_commitment(request, project_id):
 
         try:
             if isinstance(raw_json, dict):
-                compromiso = raw_json
+                commitment = raw_json
             else:
-                compromiso = json.loads(raw_json)
+                commitment = json.loads(raw_json)
         except Exception:
             messages.error(
                 request,
@@ -295,19 +322,23 @@ def analyze_commitment(request, project_id):
             )
             return redirect("projects:project_detail", project_id=project.id)
 
-        pedido_obj = None
+        # Buscar el pedido local por ID de Cloud
+        need_obj = None
         try:
-            if id_pedido:
-                pedido_obj = CollaborationRequest.objects.get(pk=int(id_pedido))
-        except CollaborationRequest.DoesNotExist:
-            pedido_obj = None
+            if id_need:
+                need_obj = CollaborationRequest.objects.filter(
+                    project=project,
+                    cloud_id=int(id_need),
+                ).first()
+        except Exception:
+            need_obj = None
 
         context = {
             "project": project,
-            "compromiso": compromiso,
-            "id_pedido": id_pedido,
-            "id_compromiso": id_compromiso,
-            "pedido_obj": pedido_obj,
+            "compromiso": commitment,
+            "id_pedido": id_need,
+            "id_compromiso": id_commitment,
+            "pedido_obj": need_obj,
         }
         return render(request, "projects/analyze_commitment.html", context)
 
@@ -361,7 +392,60 @@ def analyze_commitment(request, project_id):
     except Exception:
         pass
 
-    # Mensaje para la ONG solicitante
+    need = None
+    commitment = None
+    try:
+        id_need = client.get_case_variable(case_id, "idPedido")
+        if id_need:
+            need = CollaborationRequest.objects.filter(
+                project=project,
+                cloud_id=int(id_need),
+            ).first()
+        if need:
+            commitment = (
+                Commitment.objects
+                .filter(request=need, status=CommitmentStatus.ACTIVE)
+                .order_by("-id")
+                .first()
+            )
+    except Exception:
+        need = None
+        commitment = None
+
+    if need:
+        if action == "accept":
+            need.status = RequestStatus.COMPLETED
+        else:
+            if need.status == RequestStatus.RESERVED:
+                need.status = RequestStatus.OPEN
+        need.save(update_fields=["status"])
+
+    if commitment:
+        if action == "reject":
+            commitment.status = CommitmentStatus.CANCELLED
+            commitment.save(update_fields=["status"])
+
+    try:
+        has_open_requests = CollaborationRequest.objects.filter(
+            project=project,
+            needs_help=True,
+            status=RequestStatus.OPEN,
+        ).exists()
+
+        if not has_open_requests:
+            project.status = ProjectStatus.READY
+            project.save(update_fields=["status"])
+    except Exception:
+        pass
+
+    # Limpiar variables temporales en Bonita
+    try:
+        client.set_case_var(case_id, "compromisoJson", "", "java.lang.String")
+        client.set_case_var(case_id, "idCompromiso", 0, "java.lang.Long")
+        client.set_case_var(case_id, "idPedido", 0, "java.lang.Long")
+    except Exception:
+        pass
+
     if action == "accept":
         messages.success(
             request,
@@ -393,7 +477,7 @@ def execute_project(request, project_id):
 
     try:
         uid = client.get_session_user_id()
-        ok = client.execute_task(case_id, "Ejecución del proyecto", user_id=uid)
+        ok = client.execute_task_with_retry(case_id, "Ejecución del proyecto", user_id=uid)
         if not ok:
             msg = "Error al ejecutar la tarea 'Ejecución del proyecto'."
             raise RuntimeError(msg)
@@ -401,8 +485,97 @@ def execute_project(request, project_id):
         messages.error(request, f"Error al marcar el proyecto en ejecución: {e}")
         return redirect("projects:project_detail", project_id=project.id)
 
+    project.status = ProjectStatus.EXECUTING
+    project.save(update_fields=["status"])
     messages.success(
         request,
         "El proyecto ha sido marcado como en ejecución.",
     )
     return redirect("projects:project_detail", project_id=project.id)
+
+
+@require_user_passes_test(is_ong_solicitante)
+@require_http_methods(["GET", "POST"])
+def final_report(request, project_id):
+    project = get_object_or_404(Project, pk=project_id, created_by_user=request.user)
+
+    if project.status != ProjectStatus.EXECUTING:
+        messages.error(request, "El proyecto aún no está listo para generar el informe final.")
+        return redirect("projects:project_detail", project_id=project.id)
+
+    client = None
+    case_id = None
+    bonita_ok = False
+    cant_needs = None
+    cant_commitments = None
+
+    # Intentar consultar Bonita, pero sin romper nada si falla
+    if project.bonita_case_id:
+        try:
+            client = BonitaClient(role="SOLICITANTE")
+            case_id = str(project.bonita_case_id)
+
+            cant_needs = client.get_case_variable(case_id, "colaboracionesSolicitadas")
+            cant_commitments = client.get_case_variable(case_id, "colaboracionesRecibidas")
+            bonita_ok = True
+        except Exception as e:
+            messages.warning(
+                request,
+                f"No se pudo consultar el estado de las colaboraciones en Bonita: {e}"
+            )
+
+    if bonita_ok and cant_needs != cant_commitments:
+        messages.error(
+            request,
+            "No se pudo generar el informe final porque no se han recibido todas "
+            "las colaboraciones solicitadas."
+        )
+        return redirect("projects:project_detail", project_id=project.id)
+
+    report = FinalReport.objects.filter(project=project).first()
+
+    if request.method == "POST":
+        form = FinalReportForm(request.POST, instance=report)
+        if form.is_valid():
+            # 1) Guardar SIEMPRE en la base local
+            report = form.save(commit=False)
+            report.project = project
+            report.save()
+
+            project.status = ProjectStatus.FINISHED
+            project.save(update_fields=["status"])
+
+            # 2) Intentar completar la tarea en Bonita (best effort)
+            if bonita_ok and case_id:
+                try:
+                    user_id = client.get_session_user_id()
+                    ok = client.execute_task_with_retry(
+                        case_id,
+                        task_name="Elaborar informe final del proyecto",
+                        user_id=user_id,
+                    )
+                    if not ok:
+                        messages.warning(
+                            request,
+                            "El informe se guardó, pero no se pudo completar la tarea "
+                            "‘Elaborar informe final del proyecto’ en Bonita."
+                        )
+                except Exception as e:
+                    messages.warning(
+                        request,
+                        f"El informe se guardó, pero hubo un error al notificar a Bonita: {e}"
+                    )
+
+            messages.success(
+                request,
+                "Informe final guardado correctamente. El proyecto está finalizado."
+            )
+            return redirect("projects:project_detail", project_id=project.id)
+    else:
+        form = FinalReportForm(instance=report)
+
+    return render(
+        request,
+        "projects/final_report_form.html",
+        {"form": form, "project": project, "report": report},
+    )
