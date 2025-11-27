@@ -157,35 +157,3 @@ def project_detail(request, project_id: int):
         "is_creador": (request.user == project.created_by_user)
     }
     return render(request, "projects/project_detail.html", context)
-
-# @login_required
-# def project_detail(request, project_id):
-#     """
-#     Detalle completo.
-#     Usa el servicio para mezclar datos locales con datos de Bonita.
-#     """
-#     full_project = service.get_full_project(project_id)
-    
-#     if not full_project:
-#         messages.error(request, "El proyecto no existe.")
-#         return redirect('projects:projects_list')
-
-#     project = full_project['local']
-#     needs_remote = full_project['needs'] # Esta es la lista que vino de Bonita
-
-#     stage_form = StageForm()
-#     observation_form = ObservationForm()
-
-#     return render(request, "projects/project_detail.html", {
-#         "project": project,
-#         "needs_list": needs_remote,
-#         "stages": project.stages.all(),
-#         "observations": project.observations.all(),
-#         "stage_form": stage_form,
-#         "observation_form": observation_form,
-#         # Permisos
-#         "is_consejo": is_consejo_directivo(request.user),
-#         "is_creador": (request.user == project.created_by_user)
-#     })
-
-

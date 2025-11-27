@@ -258,6 +258,7 @@ def offer_commitment(request, project_id, need_id):
             )
 
         # Actualizar la BD local: reservar el pedido
+        cloud_id = client.get_case_variable(case_id, "idCompromiso")
         need.status = RequestStatus.RESERVED
         need.save(update_fields=["status"])
 
@@ -269,7 +270,8 @@ def offer_commitment(request, project_id, need_id):
             request=need,
             actor_label=ong,
             description=desc,
-            status=CommitmentStatus.ACTIVE
+            status=CommitmentStatus.ACTIVE,
+            cloud_id=cloud_id
         )
 
         messages.success(
@@ -379,7 +381,7 @@ def fulfill_commitment(request, project_id, commitment_id):
         client.set_case_var(
             case_id,
             "idCompromiso",
-            int(commitment_id),
+            int(commitment.cloud_id),
             type_hint="java.lang.Long",
         )
     except Exception as e:

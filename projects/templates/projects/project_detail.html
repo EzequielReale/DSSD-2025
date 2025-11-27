@@ -291,6 +291,7 @@
         </div>
     {% endif %}
 
+    {% if is_creador %}
     <div class="actions">
         {% if project.status == "READY" %}
             <form method="post" action="{% url 'projects:execute_project' project.id %}"  style="display: inline;">
@@ -316,6 +317,7 @@
             </a>
         {% endif %}
     </div>
+    {% endif %}
 
     {% if project.status == "FINISHED" and project.final_report %}
         <div class="card">
@@ -396,11 +398,11 @@
                         <td>{{ n.target_qty|default:"" }}</td>
                         <td>
                             {% if n.status == "COMPLETED" %}
-                                <span class="badge badge-completed">✓ Cumplida</span>
+                                <span class="badge badge-completed">✓ Completada</span>
                             {% elif n.status == "RESERVED" %}
                                 <span class="badge badge-reserved">⚠ Reservada</span>
                             {% else %}
-                            <span class="badge badge-pending">Completada</span>
+                            <span class="badge badge-pending">Pendiente</span>
                             {% endif %}
                         </td>
                         <td>{% if n.needs_help %}Si{% else %}No{% endif %}</td>

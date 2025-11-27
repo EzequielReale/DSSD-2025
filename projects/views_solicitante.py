@@ -447,8 +447,6 @@ def analyze_commitment(request, project_id):
     # Limpiar variables temporales en Bonita
     try:
         client.set_case_var(case_id, "compromisoJson", "", "java.lang.String")
-        client.set_case_var(case_id, "idCompromiso", 0, "java.lang.Long")
-        client.set_case_var(case_id, "idPedido", 0, "java.lang.Long")
     except Exception:
         pass
 

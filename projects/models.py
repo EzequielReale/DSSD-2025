@@ -124,6 +124,7 @@ class Commitment(models.Model):
     )
     commitment_date = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    cloud_id = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "commitment"

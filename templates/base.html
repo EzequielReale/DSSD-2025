@@ -261,7 +261,9 @@
         <nav class="nav">
             <div style="display:flex; gap:.5rem; align-items:center;">
                 <a href="{% url 'home' %}" aria-label="Inicio">Inicio</a>
-                <a href="{% url 'projects:projects_list' %}">Proyectos</a>
+                {% if request.user|has_group:"Consejo Directivo" or request.user|has_group:"ONG solicitante" %}
+                    <a href="{% url 'projects:projects_list' %}">Proyectos</a>
+                {% endif %}
                 {% if request.user|has_group:"ONG solicitante" %}
                     <a href="{% url 'projects:project_create' %}">Nuevo proyecto</a>
                 {% endif %}

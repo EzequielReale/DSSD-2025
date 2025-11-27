@@ -112,6 +112,7 @@ class Migration(migrations.Migration):
                 ('status', models.CharField(choices=[('ACTIVE', 'Comprometido'), ('FULFILLED', 'Completado'), ('CANCELLED', 'Cancelado')], db_index=True, default='ACTIVE', max_length=12)),
                 ('commitment_date', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+                ('cloud_id', models.IntegerField(blank=True, null=True)),
                 ('request', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='commitments', to='projects.collaborationrequest')),
             ],
             options={
