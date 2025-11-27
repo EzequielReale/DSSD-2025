@@ -469,6 +469,21 @@ class BonitaClient:
         response.raise_for_status()
         return response.json()
 
+    def get_actor(self, actor_id):
+        """
+        Obtiene información de un actor por su ID.
+        """
+        self._ensure_csrf()
+        try:
+            response = self.s.get(
+                f"{self.base}/API/bpm/actor/{actor_id}",
+                headers=self._headers()
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Error getting actor {actor_id}: {e}")
+            return None
     def get_active_tasks(self, case_id):
         """
         Busca las tareas que están pendientes AHORA mismo para un proyecto.

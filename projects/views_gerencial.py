@@ -1,4 +1,5 @@
 import time
+from zoneinfo import ZoneInfo
 from dateutil import parser
 from datetime import timedelta
 import statistics
@@ -177,7 +178,7 @@ def compliance_report(request):
 
                 print(dias_tardados)
                 
-                cumple = dias_tardados < 0
+                cumple = dias_tardados < 5
                 
                 reporte.append({
                     'proyecto': obs.project.name,
@@ -271,7 +272,7 @@ def stalled_projects_monitor(request):
     detenidos = []
 
     print(proyectos_activos)
-    
+    bsas_tz = ZoneInfo('America/Argentina/Buenos_Aires')
     ahora = timezone.now()
 
     for proj in proyectos_activos:
@@ -296,8 +297,10 @@ def stalled_projects_monitor(request):
                 continue
                 
             reference_date = parser.parse(date_str)
+            
+            # Asumimos que Bonita devuelve hora local de Argentina (UTC-3) pero naive
             if timezone.is_naive(reference_date):
-                reference_date = timezone.make_aware(reference_date)
+                reference_date = reference_date.replace(tzinfo=bsas_tz)
             
             # CÁLCULO: Tiempo detenido = Ahora - Fecha Referencia
             tiempo_detenido = ahora - reference_date
@@ -312,6 +315,13 @@ def stalled_projects_monitor(request):
                         usuario_nombre = f"{user_data.get('firstname', '')} {user_data.get('lastname', '')}"
                     else:
                         usuario_nombre = f"ID {user_data}"
+                elif 'actorId' in tarea:
+                    # Si no está asignada, buscamos el Rol (Actor)
+                    print(f"Buscando actor {tarea['actorId']}...")
+                    actor = client.get_actor(tarea['actorId'])
+                    print(f"Actor encontrado: {actor}")
+                    if actor:
+                        usuario_nombre = actor.get('displayName') or actor.get('name')
 
                 detenidos.append({
                     'proyecto': proj.name,

@@ -2,41 +2,127 @@
 
 {% block content %}
 <div class="container mt-5">
-    <div class="mb-4">
-        <h2 class="fw-bold">Métricas de Ciclo de Vida</h2>
-        <p class="text-muted">Análisis histórico: Tiempo promedio (Alta → Ejecución/Fin)</p>
+    <div class="mb-5">
+        <h2 class="fw-bold display-6">Métricas de Ciclo de Vida</h2>
+        <p class="text-muted lead">Análisis histórico: Tiempo promedio (Alta → Ejecución/Fin)</p>
     </div>
 
     {% if datos_grafico %}
-    <div class="row row-cols-1 row-cols-md-2 g-4">
-        {% for dato in datos_grafico %}
-        <div class="col">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-end mb-2">
-                        <h5 class="card-title fw-bold text-primary mb-0">{{ dato.mes }}</h5>
-                        <span class="badge bg-light text-dark border">{{ dato.promedio }} días promedio</span>
+    <div class="row g-4">
+        <!-- Chart Section -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Evolución Mensual</h5>
+                    <div style="height: 300px;">
+                        <canvas id="lifecycleChart"></canvas>
                     </div>
-                    
-                    <div class="progress" style="height: 10px;">
-                        <div class="progress-bar bg-primary bg-gradient rounded" 
-                             role="progressbar" 
-                             style="width: {% widthratio dato.promedio 1 2 %}%;" 
-                             aria-valuenow="{{ dato.promedio }}" 
-                             aria-valuemin="0" 
-                             aria-valuemax="100">
-                        </div>
-                    </div>
-                    <small class="text-muted mt-2 d-block">Rendimiento mensual</small>
                 </div>
             </div>
         </div>
-        {% endfor %}
+
+        <!-- Stats Section -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100 bg-light">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Resumen</h5>
+                    <div class="vstack gap-3">
+                        {% for dato in datos_grafico %}
+                        <div class="bg-white p-3 rounded shadow-sm border-start border-4 border-primary">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted text-uppercase fw-bold"
+                                        style="font-size: 1rem;">{{dato.mes}}</small>
+                                    <h3 class="fw-bold mb-0 text-dark">{{ dato.promedio }} <small
+                                            class="fs-6 text-muted">días</small></h3>
+                                </div>
+                                <div class="icon-square bg-primary bg-opacity-10 text-primary rounded-circle p-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                                        class="bi bi-calendar-check" viewBox="0 0 16 16">
+                                        <path
+                                            d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0z" />
+                                        <path
+                                            d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('lifecycleChart').getContext('2d');
+
+            // Prepare data
+            const labels = [{% for dato in datos_grafico %}"{{ dato.mes }}", {% endfor %}];
+        const data = [{% for dato in datos_grafico %}{{ dato.promedio }}, {% endfor %}];
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Promedio de Días',
+                    data: data,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)', // Bootstrap Primary
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5,
+                    barThickness: 40,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.parsed.y + ' días promedio';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            borderDash: [2, 4],
+                            color: '#e9ecef'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Días'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        });
+    </script>
+
     {% else %}
     <div class="alert alert-info shadow-sm border-0 d-flex align-items-center" role="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-info-circle-fill me-3" viewBox="0 0 16 16">
-             <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+            class="bi bi-info-circle-fill me-3" viewBox="0 0 16 16">
+            <path
+                d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" />
         </svg>
         <div>
             <strong>Sin datos suficientes.</strong> Aún no hay historial para generar las métricas visuales.

@@ -137,7 +137,8 @@ def project_detail(request, project_id: int):
 
     try:
         stages = project.stages.all()
-        observations = project.observations.all()
+        #Solo debería mostrar las observaciones cuyo text no sea vacio
+        observations = project.observations.filter(~Q(text=""))
     except Exception as e:
         messages.error(request, f"Error al consultar la base de datos: {e}")
         stages = []
