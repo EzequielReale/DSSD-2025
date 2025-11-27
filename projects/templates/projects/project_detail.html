@@ -302,7 +302,7 @@
         {% endif %}
 
         {% if project.status == "WITH_COMMITMENTS" %}
-            <form method="post" action="{% url 'projects:analyze_commitment' project.id %}" style="display: inline;">
+            <form method="get" action="{% url 'projects:analyze_commitment' project.id %}" style="display: inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn">
                     Analizar donaciones
@@ -419,7 +419,11 @@
 
     <div class="card">
         <h2 class="section-title">Etapas</h2>
-
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
         <div class="table-wrapper">
             <table>
                 <thead>
@@ -451,8 +455,8 @@
 
         {% if request.user|has_group:"ONG solicitante" %}
             <hr>
-            <h3>Agregar Nueva Etapa</h3>
-            <form method="post">
+            <h3>Nueva Etapa</h3>
+            <form method="post" action="{% url 'projects:add_stage' project.id %}">
                 {% csrf_token %}
                 {{ stage_form.as_p }}
                 <div class="actions">

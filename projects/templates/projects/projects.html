@@ -162,7 +162,9 @@
                 <th>Nombre</th>
                 <th>Inicio</th>
                 <th>Fin</th>
-                <th></th> </tr>
+                <th>Estado</th>
+                <th></th>
+            </tr>
             </thead>
             <tbody id="rows">
                 {% for p in projects %}
@@ -170,6 +172,7 @@
                     <td><a href="{% url 'projects:project_detail' p.id %}">{{ p.name|default:"" }}</a></td>
                     <td>{{ p.start_date|date:"Y-m-d" }}</td>
                     <td>{{ p.end_date|date:"Y-m-d" }}</td>
+                    <td>{{ p.get_status_display}}</td>
                     <td>
                         <a class="btn" href="{% url 'projects:project_detail' p.id %}">Ver</a>
                     </td>

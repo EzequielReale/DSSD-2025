@@ -170,13 +170,35 @@ def collab_project_needs(request, project_id):
         messages.error(request, f"Error al consultar Bonita: {e}")
         needs_list = []
 
+    local_needs = {
+        n.cloud_id: n
+        for n in CollaborationRequest.objects.filter(project=project, needs_help=True)
+    }
+
+    normalized_needs = []
+    for n in needs_list:
+        cloud_id = n.get("id")
+        local = local_needs.get(cloud_id)
+
+        if local:
+            n["status"] = local.status
+        else:
+            n["status"] = n.get("status") or "OPEN"
+
+        normalized_needs.append(n)
+
+    display_needs = [
+        n for n in normalized_needs
+        if n["status"] == RequestStatus.OPEN
+    ]
+
     return render(
         request,
         "projects/collab_needs.html",
         {
             "project": project,
             "project_id": project_id,
-            "needs": needs_list,
+            "needs": display_needs,
         },
     )
 
@@ -283,27 +305,34 @@ def my_commitments(request):
         .select_related("request__project")
     )
 
-    active = qs.filter(status=CommitmentStatus.ACTIVE)
     ready_to_fulfill = []
     waiting_execution = []
+    rejected_commitments = []
+    fulfilled_commitments = []
 
-    for c in active:
+    for c in qs:
         project = c.request.project
         item = {
             "commitment": c,
             "project": project,
             "request": c.request,
         }
-        if project.status == ProjectStatus.EXECUTING:
-            ready_to_fulfill.append(item)
+
+        if c.status == CommitmentStatus.FULFILLED:
+            fulfilled_commitments.append(item)
+        elif c.status == CommitmentStatus.CANCELLED:
+            rejected_commitments.append(item)
         else:
-            waiting_execution.append(item)
+            if project.status == ProjectStatus.EXECUTING:
+                ready_to_fulfill.append(item)
+            else:
+                waiting_execution.append(item)
 
     context = {
         "ready_to_fulfill": ready_to_fulfill,
         "waiting_execution": waiting_execution,
-        "fulfilled_commitments": qs.filter(status=CommitmentStatus.FULFILLED),
-        "rejected_commitments": qs.filter(status=CommitmentStatus.CANCELLED),
+        "fulfilled_commitments": fulfilled_commitments,
+        "rejected_commitments": rejected_commitments,
     }
     return render(request, "projects/my_commitments.html", context)
 

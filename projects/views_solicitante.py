@@ -429,7 +429,7 @@ def analyze_commitment(request, project_id):
         has_open_requests = CollaborationRequest.objects.filter(
             project=project,
             needs_help=True,
-            status=RequestStatus.OPEN,
+            status__in=[RequestStatus.OPEN, RequestStatus.RESERVED]
         ).exists()
 
         if not has_open_requests:

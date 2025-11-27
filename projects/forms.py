@@ -67,13 +67,19 @@ class StageForm(forms.ModelForm):
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
         }
+        labels = {
+            "name": "Nombre",
+            "description": "Descripción",
+            "start_date": "Fecha de inicio",
+            "end_date": "Fecha de fin",
+        }
 
 
 class ObservationForm(forms.ModelForm):
     class Meta:
         model = Observation
         fields = ['text']
-        labels = {"text": ""}
+        labels = {"Observación": ""}
         widgets = {
             "text": forms.Textarea(attrs={"rows": 3, "placeholder": "Escriba la observación o sugerencia"}),
         }
