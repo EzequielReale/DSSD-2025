@@ -174,8 +174,7 @@
                     <td>{{ p.end_date|date:"Y-m-d" }}</td>
                     <td>{{ p.get_status_display}}</td>
                     <td>
-                        {% if is_consejo %}
-                            {% if not p.has_monitoring and p.status != "FINISHED" %}
+                        {% if is_consejo and not p.has_monitoring and p.status != "FINISHED" %}
                             <a href="{% url 'projects:start_monitoring' p.id %}" class="btn btn-sm" title="Iniciar Monitoreo">
                                 ▶ Iniciar Monitoreo
                             </a>
